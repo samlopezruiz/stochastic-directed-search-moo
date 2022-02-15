@@ -15,7 +15,7 @@ sns.set_theme('poster')
 if __name__ == '__main__':
     # %%
     general_cfg = {'save_results': True,
-                   'save_history': False,
+                   'save_history': True,
                    'send_notifications': True}
 
     prob_cfg = {}
@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     algo_cfg = {'termination': ('n_gen', 100),
                 'pop_size': 100,
-                'use_sampling': False,
+                'use_sampling': True,
                 'optimize_eq_weights': False,
                 'use_constraints': True,
                 'constraints': [1., 1.],

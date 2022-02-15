@@ -205,9 +205,11 @@ def compile_multiple_results(moo_results, experiment_labels, hv_ref=None):
         results[q_lbl]['history'] = {}
         results[q_lbl]['hv_hist'] = {}
         results[q_lbl]['hv'] = {}
+        results[q_lbl]['original_losses'] = {}
         for experiment, exp_lbl in zip(moo_results, experiment_labels):
             results[q_lbl]['risks'][exp_lbl] = [e[bound]['F'] for e in experiment]
             results[q_lbl]['eq_risks'][exp_lbl] = [e[bound]['eq_F'] for e in experiment]
+            results[q_lbl]['original_losses'][exp_lbl] = [e[bound]['original_losses'] for e in experiment]
             results[q_lbl]['history'][exp_lbl] = [e[bound]['pop_hist'] for e in experiment]
             results[q_lbl]['hv_hist'][exp_lbl] = [[get_hypervolume(F, hv_ref) for F in hist] for hist
                                                   in [e[bound]['pop_hist'] for e in experiment] if hist is not None]

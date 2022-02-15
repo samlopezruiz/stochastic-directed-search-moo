@@ -349,3 +349,85 @@ def plot_2D_moo_dual_results(Fs,
     if save:
         save_fig(fig, file_path, use_date)
 
+def plot_2D_moo_dual_history(Fs,
+                             remove_1st_gen=False,
+                             save=False,
+                             file_path=None,
+                             plot_gens=None,
+                             original_loss=None,
+                             figsize=(50, 20),
+                             n_snapshots=10,
+                             title='Multi objective optimization',
+                             use_date=False,
+                             markersize=5,
+                             plot_title=True):
+
+    if remove_1st_gen:
+        Fs = Fs[1:]
+
+    if n_snapshots is not None and plot_gens is None:
+        fig, axes = plt.subplots(2, n_snapshots + 1, figsize=figsize)
+        step = len(Fs) // n_snapshots
+        plot_gen = [min(ix, len(Fs) - 1) for ix in [step * i for i in range(n_snapshots + 1)]]
+    elif plot_gens is not None:
+        fig, axes = plt.subplots(2, len(plot_gens), figsize=figsize)
+        plot_gen = plot_gens
+    else:
+        raise ValueError('Specify "plot_gens" or "n_snapshots"')
+
+    c = -1
+    x_lim, y_lim, ytot_lim = 0, 0, 0
+    for i, F in enumerate(Fs):
+        if i in plot_gen:
+            x_lim = max(x_lim, max(F[:, 0]))
+            y_lim = max(y_lim, max(F[:, 1]))
+            ytot_lim = max(ytot_lim, max(np.sum(F, axis=1)))
+            c += 1
+            axes[0, c].plot(F[:, 0], F[:, 1],
+                            marker='o',
+                            markersize=markersize,
+                            color=sns_colors[c % 10],
+                            linestyle="None",
+                            label='Gen: {}'.format(i + (1 if remove_1st_gen else 0)))
+            axes[1, c].plot(F[:, 0], np.sum(F, axis=1),
+                            marker='o',
+                            markersize=markersize,
+                            color=sns_colors[c % 10],
+                            linestyle="None",
+                            label='Gen: {}'.format(i + (1 if remove_1st_gen else 0)))
+
+            if original_loss is not None:
+                original_loss = np.array(original_loss).reshape((1, -1))
+                axes[0, c].plot(original_loss[:, 0], original_loss[:, 1],
+                                marker='*',
+                                markersize=24,
+                                color='black',
+                                linestyle="None",
+                                label='original')
+                axes[1, c].plot(original_loss[:, 0], np.sum(original_loss, axis=1),
+                                marker='*',
+                                markersize=24,
+                                color='black',
+                                linestyle="None",
+                                label='original')
+
+    for i, g in enumerate(plot_gen):
+        axes[0, i].set_title('Gen: {}'.format(g + (1 if remove_1st_gen else 0)), fontweight="bold")
+        axes[0, i].set_xlim(0, x_lim)
+        axes[0, i].set_ylim(0, y_lim)
+        axes[1, i].set_xlim(0, x_lim)
+        axes[1, i].set_ylim(0, ytot_lim)
+        axes[0, i].set_xlabel('QCR')
+        axes[0, i].set_ylabel('QER')
+        axes[1, i].set_xlabel('QCR')
+        axes[1, i].set_ylabel('Total')
+        axes[0, i].legend()
+        axes[1, i].legend()
+
+    if plot_title:
+        fig.suptitle(title)
+    plt.tight_layout()
+    plt.show()
+
+    if save:
+        save_fig(fig, file_path, use_date)

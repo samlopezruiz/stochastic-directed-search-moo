@@ -25,27 +25,22 @@ if __name__ == '__main__':
     algo_cfg = {'termination': ('n_gen', 100),
                 'pop_size': 100,
                 'use_sampling': False,
-                'optimize_eq_weights': True,
+                'optimize_eq_weights': False,
                 'use_constraints': True,
-                'constraints': [1., 2.5],
+                'constraints': [1., 1.],
                 }
 
     experiment_names = [
         '60t_ema_q159',
-        '60t_ema_q258',
-        '60t_ema_q357',
     ]
     results_names = [
         'TFTModel_ES_ema_r_q159_lr01_pred',
-        'TFTModel_ES_ema_r_q258_lr01_pred',
-        'TFTModel_ES_ema_r_q357_lr01_pred',
     ]
 
     moo_methods = ['NSGA2']#, 'NSGA3', 'MOEAD']
-    n_repeats = 3
+    n_repeats = 5
 
     for experiment_name, results_name in zip(experiment_names, results_names):
-
 
         results_cfg = {'formatter': 'snp',
                        'experiment_name': experiment_name,
