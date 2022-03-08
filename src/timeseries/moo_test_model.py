@@ -20,11 +20,11 @@ if __name__ == "__main__":
     print("Device Name: ", tf.test.gpu_device_name())
     print('TF eager execution: {}'.format(tf.executing_eagerly()))
 
-    general_cfg = {'save_forecast': False,
+    general_cfg = {'save_forecast': True,
                    'save_plot': False,
                    'plot_title': False,
                    'use_all_data': True,
-                   'use_moo_weights': False,
+                   'use_moo_weights': True,
                    'plot_tolerance': True,
                    'manual_selection': True}
 

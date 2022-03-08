@@ -153,3 +153,4 @@ fabric.properties
 # Custom
 /src/timeseries/outputs/
 
+/src/models/d_search/img/

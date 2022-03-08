@@ -20,7 +20,7 @@ def get_moo_args(params):
     return (params['name'],
             params['algo_cfg'],
             params['prob_cfg'],
-            params.get('problem', None),
+            params.get('core', None),
             params.get('plot', False),
             params.get('file_path', ['img', 'res']),
             params.get('save_plots', False),
@@ -151,18 +151,8 @@ def compute_moo_q_loss(quantiles, unscaled_output_map, overwrite_q=None):
         losses[key + '_loss'] = utils.numpy_normalised_quantile_loss_moo(
             extract_numerical_data(targets), extract_numerical_data(unscaled_output_map[key]), new_q)
 
-    #     if output_eq_loss:
-    #         losses_eq_weight[key + '_loss'] = utils.numpy_normalised_quantile_loss_moo(
-    #             extract_numerical_data(targets), extract_numerical_data(unscaled_output_map[key]), 0.5)
-    #
     q_losses = [[obj.mean() for obj in p_loss] for k, p_loss in losses.items()]
-    #
-    # if output_eq_loss:
-    #     q_eq_losses = [[obj.mean() for obj in p_loss] for k, p_loss in losses_eq_weight.items()]
-    #
-    #     return np.array(q_losses), np.array(q_eq_losses)
-    #
-    # else:
+
     return np.array(q_losses)
 
 

@@ -1,6 +1,7 @@
 import tensorflow as tf
 
-from src.models.attn.utils import tensorflow_quantile_loss
+from src.models.attn.utils import tensorflow_quantile_loss, tensorflow_quantile_loss_moo, \
+    numpy_normalised_quantile_loss_moo
 
 concat = tf.keras.backend.concatenate
 stack = tf.keras.backend.stack
@@ -484,4 +485,60 @@ b: Predictions
                     a[Ellipsis, self.output_size * i:self.output_size * (i + 1)],
                     b[Ellipsis, self.output_size * i:self.output_size * (i + 1)], quantile)
         return loss
+
+    def quantile_loss_per_q(self, a, b):
+        """Returns quantile loss for specified quantiles.
+
+        Args:
+        a: Targets
+        b: Predictions
+        """
+        quantiles_used = set(self.quantiles)
+
+        loss = []
+        for i, quantile in enumerate(self.quantiles):
+            if quantile in quantiles_used:
+                loss.append(tf.reduce_mean(tensorflow_quantile_loss(
+                    a[Ellipsis, self.output_size * i:self.output_size * (i + 1)],
+                    b[Ellipsis, self.output_size * i:self.output_size * (i + 1)], quantile)))
+
+        return tf.stack(loss)
+
+    def quantile_loss_per_q_moo(self, a, b):
+        """Returns quantile loss for specified quantiles.
+
+        Args:
+        a: Targets
+        b: Predictions
+        """
+        quantiles_used = set(self.quantiles)
+
+        loss = []
+        for i, quantile in enumerate(self.quantiles):
+            if quantile in quantiles_used:
+                loss.append(tensorflow_quantile_loss_moo(
+                    a[Ellipsis, self.output_size * i:self.output_size * (i + 1)],
+                    b[Ellipsis, self.output_size * i:self.output_size * (i + 1)], quantile))
+
+        return loss
+
+    def numpy_quantile_loss_per_q_moo(self, a, b):
+        """Returns quantile loss for specified quantiles.
+
+        Args:
+        a: Targets
+        b: Predictions
+        """
+        quantiles_used = set(self.quantiles)
+
+        loss = []
+        for i, quantile in enumerate(self.quantiles):
+            if quantile in quantiles_used:
+                loss.append(numpy_normalised_quantile_loss_moo(
+                    a[Ellipsis, self.output_size * i:self.output_size * (i + 1)],
+                    b[Ellipsis, self.output_size * i:self.output_size * (i + 1)], quantile))
+
+        return loss
+
+
 

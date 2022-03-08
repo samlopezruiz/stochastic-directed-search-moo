@@ -1,30 +1,18 @@
 import copy
 import os
+import time
 
 import joblib
 import numpy as np
-import seaborn as sns
-import telegram_send
-import tensorflow as tf
+
 from src.models.attn.hyperparam_opt import HyperparamOptManager
 from src.models.attn.nn_funcs import QuantileLossCalculator
-from src.models.attn.utils import extract_numerical_data
-from src.timeseries.moo.dual_problem_def import DualQuantileWeights
-from src.timeseries.utils.filename import get_result_folder, quantiles_name, termination_name
-from src.timeseries.utils.files import save_vars
+from src.timeseries.moo.core.problem import TsQuantileProblem
+from src.timeseries.utils.filename import get_result_folder
 from src.timeseries.utils.harness import get_model_data_config, get_model
-from src.timeseries.utils.moo import get_last_layer_weights, create_output_map, compute_moo_q_loss, moo_q_loss_model
-from src.timeseries.utils.moo_harness import run_dual_moo_weights
-from src.models.attn import utils
-
-sns.set_theme('poster')
 
 if __name__ == '__main__':
     # %%
-    general_cfg = {'save_results': True,
-                   'save_history': True,
-                   'send_notifications': True}
-
     project = 'snp'
     results_cfg = {'experiment_name': '60t_ema_q159',
                    'results': 'TFTModel_ES_ema_r_q159_lr01_pred'
@@ -52,28 +40,36 @@ if __name__ == '__main__':
 
     model = Model(model_params)
     model.load(opt_manager.hyperparam_folder, use_keras_loadings=True)
-    weights, last_layer = get_last_layer_weights(model)
 
-    #%%
     outputs, output_map, data_map = model.predict_all(valid, batch_size=128)
     pre_last_layer_output = outputs['transformer_output']
 
     quantiles = copy.copy(model.quantiles)
     output_size = copy.copy(model.output_size)
 
-    quantile_loss = QuantileLossCalculator(quantiles, output_size).quantile_loss
+    quantile_loss = QuantileLossCalculator(quantiles, output_size).quantile_loss_per_q_moo
     targets = data_map['outputs']
 
-    #%%
     y_true = np.concatenate([targets, targets, targets], axis=-1)
 
-    with tf.GradientTape() as tape:
-        # Forward pass
-        y_pred = last_layer(pre_last_layer_output)
-        loss = quantile_loss(y_true, y_pred)
+    # %%
+    t0 = time.time()
+    problem = TsQuantileProblem(y_true=y_true,
+                                x_data=valid,
+                                model=model,
+                                eval_fs=[quantile_loss],
+                                quantile_ix=0
+                                )
 
-    grad = tape.gradient(loss, last_layer.trainable_variables)
+    print('init core time: {}'.format(round(time.time() - t0, 4)))
 
-    for var, g in zip(last_layer.trainable_variables, grad):
-        print(f'{var.name}, shape: {g.shape}')
+    t0 = time.time()
+    x = problem.original_x
+    fx = problem.evaluate(x)
+    print('eval f(x) time: {}'.format(round(time.time() - t0, 4)))
 
+    t0 = time.time()
+    dx = problem.gradient(x)
+    print('grad df(x) time: {}'.format(round(time.time() - t0, 4)))
+
+    # %%

@@ -211,7 +211,7 @@ def repeat_moo(params, n_repeat, is_reproductible=False, parallel=True):
 
 def run_multiple_problems(probs, algos, general_cfg, params, algo_cfg, prob_cfg, folder_cfg, parallel=True):
     for problem, k in probs:
-        print('\nRunning Optimization for problem: {} k={}'.format(problem, k))
+        print('\nRunning Optimization for core: {} k={}'.format(problem, k))
         prob_cfg['name'], prob_cfg['n_obj'] = problem, k
         prob_cfg['hv_ref'] = [5] * prob_cfg['n_obj']
         algo_cfg['hv_ref'] = [10] * prob_cfg['n_obj']
@@ -227,7 +227,7 @@ def run_multiple_problems(probs, algos, general_cfg, params, algo_cfg, prob_cfg,
 
         if general_cfg['save_stats']:
             pops = [algo_runs['result']['res'].pop for algo_runs in algos_runs]
-            sv = {'algos': algos, 'problem': problem, 'k': k, 'prob_cfg': prob_cfg, 'pops': pops,
+            sv = {'algos': algos, 'core': problem, 'k': k, 'prob_cfg': prob_cfg, 'pops': pops,
                   'algo_cfg': algo_cfg, 'algos_hv_hist_runs': algos_hv_hist_runs}
             save_vars(sv,
                       path=['output',

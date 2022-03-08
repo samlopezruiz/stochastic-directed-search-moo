@@ -144,6 +144,7 @@ class SingleQuantileWeights(Problem):
                  constraints_limits,
                  optimize_eq_weights,
                  **kwargs):
+
         self.ini_ind = original_ind
         self.quantiles = quantiles
         self.output_size = output_size

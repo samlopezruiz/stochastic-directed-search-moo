@@ -24,7 +24,7 @@ def wilcoxon_rank(arr, labels, alternative='less'):
 class Winners:
     def __init__(self, metrics, labels):
         '''
-        metrics: rows are problem samples, cols are algorithms
+        metrics: rows are core samples, cols are algorithms
         '''
         self.cd_mat_calculated = False
         self.labels = labels
