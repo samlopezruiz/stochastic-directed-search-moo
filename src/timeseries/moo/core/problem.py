@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from src.models.d_search.core.problem import ContinuationProblem
+from src.moo.nn.utils import batch_array, predict_from_batches
 from src.timeseries.utils.moo import params_conversion_weights, reconstruct_weights, get_last_layer_weights
 
 

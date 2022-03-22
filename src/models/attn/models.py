@@ -147,6 +147,9 @@ class TFTModel(TSModel):
             lstm_layer, self.hidden_layer_size, self.dropout_rate, activation=None)
         temporal_feature_layer = add_and_norm([lstm_layer, input_embeddings])
 
+        # checkpoint_layer = tf.keras.layers.Layer(name='enrichment')
+        # temporal_feature_layer = checkpoint_layer(temporal_feature_layer)
+
         # Static enrichment layers
         expanded_static_context = K.expand_dims(static_context_enrichment, axis=1)
         enriched, _ = gated_residual_network(
@@ -156,6 +159,9 @@ class TFTModel(TSModel):
             use_time_distributed=True,
             additional_context=expanded_static_context,
             return_gate=True)
+
+        # checkpoint_layer = tf.keras.layers.Layer(name='enrichment')
+        # enriched = checkpoint_layer(enriched)
 
         # Decoder self attention
         self_attn_layer = InterpretableMultiHeadAttention(
@@ -490,7 +496,6 @@ class DCNNModel(TSModel):
         n_layers = self.n_layers
         reg = self.reg
         stddev = self.stddev
-
 
         x = dcnn_1st_layer(n_filters, n_kernel, 1, None, reg=reg)(input_embeddings)
         for layer in range(1, n_layers):

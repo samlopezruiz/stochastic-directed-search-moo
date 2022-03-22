@@ -9,7 +9,6 @@ from pymoo.factory import get_termination, get_problem, get_sampling, get_crosso
     get_reference_directions
 from pymoo.optimize import minimize
 
-
 # from algorithms.moo.smsemoa import SMSEMOA
 # from algorithms.moo.utils.indicators import get_hypervolume, hv_hist_from_runs
 # from algorithms.moo.utils.plot import plot_runs, plot_boxplot
@@ -42,9 +41,10 @@ def run_moo(problem, algorithm, algo_cfg, verbose=1, seed=None, save_history=Tru
     if verbose >= 1:
         print('{} with {} finished in {}s'.format(get_type_str(problem), get_type_str(algorithm), round(opt_time, 4)))
 
-    pop_hist = [gen.pop.get('F') for gen in res.history] if save_history else None
+    pop_hist = [gen.pop_size.get('F') for gen in res.history] if save_history else None
     result = {'res': res, 'pop_hist': pop_hist, 'opt_time': opt_time}
     return result
+
 
 def run_dual_moo_weights(moo_method,
                          algo_cfg,
@@ -55,7 +55,6 @@ def run_dual_moo_weights(moo_method,
                          dual_q_problem,
                          model_results,
                          verbose=0):
-
     results, times = {}, []
     for bound, problem in zip(['lq', 'uq'], [lower_q_problem, upper_q_problem]):
         t0 = time.time()
@@ -104,7 +103,6 @@ def run_dual_moo_weights(moo_method,
 
     return {'results': results,
             'times': times}
-
 
 
 def create_title(prob_cfg, algo_cfg, algorithm):
@@ -190,7 +188,7 @@ def run_moo_problem(name,
     #                      use_date=use_date)
 
     hv_pop = get_hypervolume(result['pop_hist'][-1], prob_cfg['hv_ref'])
-    hv_opt = None #get_hypervolume(result['res'].opt.get('F'), prob_cfg['hv_ref'])
+    hv_opt = None  # get_hypervolume(result['res'].opt.get('F'), prob_cfg['hv_ref'])
 
     problem_result = {'result': result, 'hv_pop': hv_pop, 'hv_opt': hv_opt}
     return problem_result
@@ -226,14 +224,14 @@ def run_multiple_problems(probs, algos, general_cfg, params, algo_cfg, prob_cfg,
             print('\t{} with {} finished in {}s'.format(problem, algo, round(time.time() - t0, 2)))
 
         if general_cfg['save_stats']:
-            pops = [algo_runs['result']['res'].pop for algo_runs in algos_runs]
+            pops = [algo_runs['result']['res'].pop_size for algo_runs in algos_runs]
             sv = {'algos': algos, 'core': problem, 'k': k, 'prob_cfg': prob_cfg, 'pops': pops,
                   'algo_cfg': algo_cfg, 'algos_hv_hist_runs': algos_hv_hist_runs}
             save_vars(sv,
                       path=['output',
                             folder_cfg['experiment'],
                             folder_cfg['results'],
-                                 '{}_k{}_res'.format(problem, k)],
+                            '{}_k{}_res'.format(problem, k)],
                       use_date=general_cfg['use_date'])
 
         if general_cfg['plot_ind_algorithms']:
@@ -293,9 +291,9 @@ def run_multiple_problems(probs, algos, general_cfg, params, algo_cfg, prob_cfg,
                      title='{} k={} hypervolume history'.format(problem, k),
                      size=(15, 9),
                      file_path=['output',
-                                  folder_cfg['experiment'],
-                                  folder_cfg['images'],
-                                  '{}_k{}_hv'.format(problem, k)],
+                                folder_cfg['experiment'],
+                                folder_cfg['images'],
+                                '{}_k{}_hv'.format(problem, k)],
                      save=general_cfg['save_stat_plots'],
                      show_grid=False,
                      use_date=general_cfg['use_date'])
@@ -307,9 +305,9 @@ def run_multiple_problems(probs, algos, general_cfg, params, algo_cfg, prob_cfg,
                      title='{} k={} execution times'.format(problem, k),
                      size=(15, 9),
                      file_path=['output',
-                                  folder_cfg['experiment'],
-                                  folder_cfg['images'],
-                                  '{}_k{}_exec_t'.format(problem, k)],
+                                folder_cfg['experiment'],
+                                folder_cfg['images'],
+                                '{}_k{}_exec_t'.format(problem, k)],
                      save=general_cfg['save_stat_plots'],
                      show_grid=False,
                      use_date=general_cfg['use_date'])

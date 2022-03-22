@@ -441,7 +441,7 @@ class TSModel(object):
         """
 
         # Inputs.
-        all_inputs = tf.keras.layers.Input(shape=self.get_input_shape())
+        all_inputs = tf.keras.layers.Input(shape=self.get_input_shape(), name='main_input')
         self._input_placeholder = all_inputs
 
         extraction_output, attention_components = self._build_base_graph(all_inputs)
@@ -475,7 +475,7 @@ class TSModel(object):
 
         print('\n*** Fitting {} ***'.format(self.name))
         log_dir = os.path.join(self.model_folder,
-                               "logs/fit/" + self.name+'-' + datetime.datetime.now().strftime("%Y%m%d-%H%M")[2:])
+                               "logs/fit/" + self.name + '-' + datetime.datetime.now().strftime("%Y%m%d-%H%M")[2:])
 
         # Add relevant callbacks
         callbacks = [
@@ -713,7 +713,6 @@ class TSModel(object):
         # when model is reloaded (https://github.com/keras-team/keras/issues/4875).
         save_path = self.get_keras_saved_path(model_folder)
         self.model.save_weights(save_path)
-
 
     def load(self, model_folder, use_keras_loadings=False):
         """Loads TFT weights.

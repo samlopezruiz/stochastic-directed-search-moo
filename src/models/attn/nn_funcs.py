@@ -35,6 +35,7 @@ def get_lstm(return_state, hidden_layer_size):
         use_bias=True)
     return lstm
 
+
 # Layer utility functions.
 def linear_layer(size,
                  activation=None,
@@ -176,10 +177,14 @@ def gated_residual_network(x,
                           activation=None,
                           use_time_distributed=use_time_distributed)(x)
     if additional_context is not None:
-        hidden = hidden + linear_layer(hidden_layer_size,
-                                       activation=None,
-                                       use_time_distributed=use_time_distributed,
-                                       use_bias=False)(additional_context)
+        hidden = tf.keras.layers.Add()([hidden, linear_layer(hidden_layer_size,
+                                                             activation=None,
+                                                             use_time_distributed=use_time_distributed,
+                                                             use_bias=False)(additional_context)])
+        # hidden = hidden + linear_layer(hidden_layer_size,
+        #                                activation=None,
+        #                                use_time_distributed=use_time_distributed,
+        #                                use_bias=False)(additional_context)
     hidden = tf.keras.layers.Activation('elu')(hidden)
     hidden = linear_layer(hidden_layer_size,
                           activation=None,
@@ -208,6 +213,7 @@ def get_decoder_mask(self_attn_inputs):
     bs = tf.shape(input=self_attn_inputs)[:1]
     mask = K.cumsum(tf.eye(len_s, batch_shape=bs), 1)
     return mask
+
 
 class ScaledDotProductAttention():
     """Defines scaled dot product attention layer.
@@ -452,7 +458,6 @@ class DataCache(object):
         return key in cls._data_cache
 
 
-
 class QuantileLossCalculator(object):
     """Computes the combined quantile loss for prespecified quantiles.
 
@@ -539,6 +544,3 @@ b: Predictions
                     b[Ellipsis, self.output_size * i:self.output_size * (i + 1)], quantile))
 
         return loss
-
-
-

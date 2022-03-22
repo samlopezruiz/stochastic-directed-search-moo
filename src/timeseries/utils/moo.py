@@ -11,6 +11,8 @@ from src.models.attn.utils import extract_numerical_data
 from src.timeseries.utils.util import array_from_lists
 
 import numpy as np
+
+
 # from pymcdm import methods as mcdm_methods
 # from pymcdm import weights as mcdm_weights
 # from pymcdm.helpers import rankdata
@@ -27,6 +29,7 @@ def get_moo_args(params):
             params.get('verbose', 1),
             params.get('seed', None))
 
+
 def get_hv_hist_vs_n_evals(algos_runs, algos_hv_hist_runs):
     algos_n_evals_runs = [[gen.evaluator.n_eval for gen in algo_runs[0]['result']['res'].history]
                           for algo_runs in algos_runs]
@@ -34,6 +37,7 @@ def get_hv_hist_vs_n_evals(algos_runs, algos_hv_hist_runs):
     series = [pd.DataFrame(hv, index=n_eval) for hv, n_eval in zip(mean_hv_hist, algos_n_evals_runs)]
     df2 = pd.concat(series, ignore_index=False, join='outer', axis=1)
     return df2.values.T
+
 
 def loss_wo_middle_row(loss):
     return np.array([loss[0, 0], loss[0, 1], loss[2, 0], loss[2, 1]])
@@ -91,6 +95,7 @@ def get_selected_ix(quantiles_loss, risk, upper=True):
     # consider only first element for bound
     for key, value in valid_ix.items():
         return np.argmin(np.abs(quantiles_loss[:, value[0]] - value[1]))
+
 
 def valid_test_model(data_formatter, model, test, valid):
     print("Computing best validation loss")
@@ -172,13 +177,15 @@ def dense_layer_output(weights, X):
 
     return np.concatenate(ans, axis=0)
 
+
 def get_last_layer_weights(model, layer_name='quantiles'):
-    relevant_layers = [l for l in model.model.layers if layer_name in l.name]
+    relevant_layers = [l for l in model.base_model.layers if layer_name in l.name]
     if len(relevant_layers) > 1:
         raise Exception('More than one layer found')
     else:
         last_layer = relevant_layers[0]
         return last_layer.get_weights(), last_layer
+
 
 def get_new_weights(original_weights, selected_weights):
     new_weights = copy.deepcopy(original_weights)
@@ -187,6 +194,7 @@ def get_new_weights(original_weights, selected_weights):
     new_weights[1][0] = selected_weights['lq'][-1]
     new_weights[1][2] = selected_weights['uq'][-1]
     return new_weights
+
 
 def params_conversion_weights(weights):
     shapes = [w.shape for w in weights]
@@ -311,7 +319,6 @@ def run_single_w_nn(x,
                     ix_weight,
                     original_weights,
                     overwrite_q=None):
-
     new_weights = copy.deepcopy(original_weights)
     weights, b = x[:-1], x[-1]
     new_weights[0][:, ix_weight] = weights
@@ -338,14 +345,16 @@ def run_single_w_nn(x,
 def get_deap_pops_obj(logbook):
     pops = logbook.select('pop')
     pops_obj = [np.array([ind.fitness.values for ind in pop]) for pop in pops]
-    ref = np.max([np.max(wobjs, axis=0) for wobjs in pops_obj], axis=0) #+ 1
+    ref = np.max([np.max(wobjs, axis=0) for wobjs in pops_obj], axis=0)  # + 1
     return pops_obj, ref
 
+
 def get_pymoo_pops_obj(res):
-    pops = [pop.pop for pop in res.history]
+    pops = [pop.pop_size for pop in res.history]
     pops_obj = [np.array([ind.F for ind in pop]) for pop in pops]
-    ref = np.max([np.max(wobjs, axis=0) for wobjs in pops_obj], axis=0) #+ 1
+    ref = np.max([np.max(wobjs, axis=0) for wobjs in pops_obj], axis=0)  # + 1
     return pops_obj, ref
+
 
 def get_deap_pop_hist(logbook):
     pop_hist = []
@@ -359,6 +368,7 @@ def get_fitnesses(pop):
     fitnesses = np.array([ind.fitness.wvalues for ind in pop])
     fitnesses *= -1
     return fitnesses
+
 
 def hypervolume(individuals, ref=None):
     # front = tools.sortLogNondominated(individuals, len(individuals), first_front_only=True)
