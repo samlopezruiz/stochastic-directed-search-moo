@@ -12,9 +12,7 @@ from botocore.config import Config
 from src.timeseries.utils.dataframe import renamer
 
 
-
 def download_datasets(dataset_cfg, project):
-
     save_path = os.path.join('outputs', 'data', project, 'raw')
     os.makedirs(save_path, exist_ok=True)
 
@@ -105,7 +103,7 @@ def get_data_root(project):
 
 # def get_model_market_path(data_cfg, subfolder='split', last_folder='src_folder'):
 #     src_folder = data_cfg.get(last_folder, 'res')
-#     return os.path.join(PROJECT_ROOT, 'experiments', 'market', subfolder, src_folder)
+#     return os.path.join(PROJECT_ROOT, 'ideas', 'market', subfolder, src_folder)
 #
 #
 # def get_market_path(data_cfg, last_folder='src_folder'):
@@ -144,7 +142,6 @@ def load_multiple_markets(data_cfgs, project, resampling='D', ffill=True):
         df.ffill(axis=0, inplace=True)
         df.dropna(inplace=True)
     return df
-
 
 
 # def save_df(df, data_cfg, timestamp=True, last_folder='src_folder', end='.csv', suffix=''):

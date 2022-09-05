@@ -15,7 +15,7 @@ from src.moo.examples.utils.metrics import classification_eval_metrics
 from src.moo.core.continuation import BiDirectionalDsContinuation
 from src.moo.factory import get_tfun, get_corrector, get_predictor, get_cont_termination
 from src.moo.loss.classification import WeightedCategoricalCrossentropy
-from src.moo.nn.problem import ClassificationProblem
+from src.moo.nn.problem_old import ClassificationProblem
 from src.moo.utils.functions import sort_according_first_obj
 from src.utils.plot import plot_2D_points_traces, plot_metrics_traces, \
     plot_bidir_2D_points_vectors
@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
         metrics = np.vstack([np.mean(precision, axis=1), np.mean(recall, axis=1)])
         orig_metric = np.array([problem.eval_with_metrics(problem.original_x, key='precision'),
-                                 problem.eval_with_metrics(problem.original_x, key='recall')])
+                                problem.eval_with_metrics(problem.original_x, key='recall')])
         plot_2D_points_traces([metrics, orig_metric], names=['precision', 'recall'])
 
     # %%

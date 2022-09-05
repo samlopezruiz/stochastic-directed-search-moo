@@ -8,11 +8,10 @@ from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.factory import get_sampling, get_crossover, get_mutation, get_termination, get_reference_directions
 from pymoo.optimize import minimize
 
-
 from src.models.d_search.algorithms.continuation import BiDirectionalDsContinuation
 from src.models.d_search.utils.plot import plot_bidir_2D_points_vectors, plot_2D_points_traces
 from src.models.d_search.utils.factory import get_predictor, get_tfun, get_corrector, get_cont_termination
-from src.timeseries.moo.core.problem import TsQuantileProblem
+from src.timeseries.moo.moea.core.problem import TsQuantileProblem
 from src.timeseries.utils.continuation import get_q_moo_params_for_problem
 from src.timeseries.utils.filename import get_result_folder
 from src.timeseries.utils.moo import get_hypervolume
@@ -44,7 +43,7 @@ if __name__ == '__main__':
                                 quantile_ix=0)
     print('init core time: {}'.format(round(time.time() - t0, 4)))
 
-    #%%
+    # %%
     if solve_moea:
         ref_dirs = get_reference_directions("energy", problem.n_obj, 100)
         algorithm = NSGA3(
@@ -122,7 +121,7 @@ if __name__ == '__main__':
                                  plot_points=True,
                                  plot_ps=False)
 
-    #%%
+    # %%
     if solve_moea:
         plot_traces = [results['population']['F'], pf]
         plot_2D_points_traces(points_traces=plot_traces,
@@ -137,5 +136,4 @@ if __name__ == '__main__':
     hv_pop = get_hypervolume(results['population']['F'], ref=[2., 2.])
     print('pop hv: {}, moea hv:{}'.format(hv_pop, hv_moea))
 
-    #%%
-
+    # %%

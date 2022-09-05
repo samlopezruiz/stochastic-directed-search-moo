@@ -86,7 +86,8 @@ class Boxes:
     def has_box(self, fx):
         node = self.root
 
-        if not np.all(fx >= self.limits[:, 0]) or not np.all(fx >= self.limits[:, 0]):
+        # fx is outside the limits
+        if np.any(fx > self.limits[:, 1]) or np.any(fx < self.limits[:, 0]):
             return None
 
         for h in range(self.max_h - 1):

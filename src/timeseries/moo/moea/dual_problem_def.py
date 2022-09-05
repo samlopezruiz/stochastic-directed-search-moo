@@ -9,10 +9,10 @@ from pymoo.core.problem import Problem
 import tensorflow as tf
 # from algorithms.tft2.harness.train_test import moo_q_loss_model, compute_moo_q_loss
 # from algorithms.tft2.libs.hyperparam_opt import HyperparamOptManager
-# from timeseries.experiments.market.moo.utils.model import get_last_layer_weights, run_single_w_nn, \
+# from timeseries.ideas.market.moo.utils.model import get_last_layer_weights, run_single_w_nn, \
 #     get_ix_ind_from_weights, create_output_map
-# from timeseries.experiments.market.utils.filename import get_result_folder
-# from timeseries.experiments.market.utils.harness import get_model, get_model_data_config
+# from timeseries.ideas.market.utils.filename import get_result_folder
+# from timeseries.ideas.market.utils.harness import get_model, get_model_data_config
 # from timeseries.utils.parallel import repeat_different_args
 from src.models.attn.hyperparam_opt import HyperparamOptManager
 from src.timeseries.utils.filename import get_result_folder

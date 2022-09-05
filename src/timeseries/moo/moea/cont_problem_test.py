@@ -5,8 +5,8 @@ import joblib
 import numpy as np
 
 from src.models.attn.nn_funcs import QuantileLossCalculator
-from src.timeseries.moo.core.problem import TsQuantileProblem
-from src.timeseries.moo.dual_problem_def import DualQuantileWeights
+from src.timeseries.moo.moea.core.problem import TsQuantileProblem
+from src.timeseries.moo.moea.dual_problem_def import DualQuantileWeights
 from src.timeseries.utils.continuation import get_q_moo_params_for_problem
 from src.timeseries.utils.filename import get_result_folder
 from src.timeseries.utils.harness import get_model_data_config
@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     lower_q_problem, upper_q_problem = dual_q_problem.get_problems()
 
-    #%%
+    # %%
     x0 = problem.original_x
     f0 = problem.evaluate(x0)
     print(f0)
@@ -77,11 +77,13 @@ if __name__ == '__main__':
     f1 = lower_q_problem.evaluate(ind)
     print(f1)
 
-    #%%
-    quantile_loss_per_q_moo = QuantileLossCalculator(model_params['model'].quantiles, model_params['model'].output_size).quantile_loss_per_q_moo
-    numpy_quantile_loss_per_q_moo = QuantileLossCalculator(model_params['model'].quantiles, model_params['model'].output_size).numpy_quantile_loss_per_q_moo
+    # %%
+    quantile_loss_per_q_moo = QuantileLossCalculator(model_params['model'].quantiles,
+                                                     model_params['model'].output_size).quantile_loss_per_q_moo
+    numpy_quantile_loss_per_q_moo = QuantileLossCalculator(model_params['model'].quantiles, model_params[
+        'model'].output_size).numpy_quantile_loss_per_q_moo
 
-    #%%=
+    # %%=
     y_pred = problem.predict()
     my_map = lower_q_problem.get_pred_func(ind)
     y_pred1 = np.squeeze(my_map().numpy())

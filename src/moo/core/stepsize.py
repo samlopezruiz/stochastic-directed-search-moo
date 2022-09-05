@@ -1,3 +1,5 @@
+from math import acos
+
 import numpy as np
 from numpy.linalg import norm
 
@@ -43,7 +45,26 @@ class WeightedDominance(StepSize):
         fy = self.problem.evaluate(x + t0 * v)
         self.n_f_evals += 1
 
+        # while np.dot(fy - fx, a) < self.eps:
         while np.any((fy - fx) * c * a < -self.eps):
+            t0 /= 2
+            if t0 < 1e-10:
+                t0 = 0
+
+            fy = self.problem.evaluate(x + t0 * v)
+            self.n_f_evals += 1
+
+        return x + t0 * v, fy, t0
+
+
+class Angle(StepSize):
+
+    def _do(self, x, fx, v, t0, a, c=1, **kwargs):
+
+        fy = self.problem.evaluate(x + t0 * v)
+        self.n_f_evals += 1
+
+        while np.rad2deg(acos(np.dot(fy - fx, a) / (norm(fy - fx) * norm(a)))) > self.eps:
             t0 /= 2
             if t0 < 1e-10:
                 t0 = 0

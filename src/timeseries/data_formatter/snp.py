@@ -22,7 +22,7 @@ class SnPFormatter(GenericDataFormatter):
   Attributes:
     column_definition: Defines input and data type of column used in the
       experiment.
-    identifiers: Entity identifiers used in experiments.
+    identifiers: Entity identifiers used in ideas.
   """
 
     _column_definition = []
@@ -202,14 +202,14 @@ class SnPFormatter(GenericDataFormatter):
         # if data_config['regime_file']:
         #     print('Loading Regime Data: {}'.format(data_config['regime_file']))
         #     regime_data = joblib.load(data_config['regime_file'])
-            # self.n_states = regime_data['n_regimes']
+        # self.n_states = regime_data['n_regimes']
         # else:
         #     regime_data = None
         mkt_data = split_data['data']
         add_data = [add_ds.get('data', None) for add_ds in additional_data]
         # reg_data = regime_data.get('data', None)
 
-        return mkt_data, add_data #, reg_data
+        return mkt_data, add_data  # , reg_data
 
     def set_true_target(self, true_target, valid, test):
 
@@ -218,8 +218,6 @@ class SnPFormatter(GenericDataFormatter):
         time_column = utils.get_single_col_by_input_type(InputTypes.TIME, column_definitions)
         self.valid_true_y = pd.Series(valid[true_target].values, index=valid[time_column], name=true_target).to_frame()
         self.test_true_y = pd.Series(test[true_target].values, index=test[time_column], name=true_target).to_frame()
-
-
 
     def set_scalers(self, df):
         """Calibrates scalers using the data supplied.
@@ -331,7 +329,7 @@ class SnPFormatter(GenericDataFormatter):
             self.fixed_params[key] = val
 
     def get_fixed_params(self):
-        """Returns fixed model parameters for experiments."""
+        """Returns fixed model parameters for ideas."""
 
         return self.fixed_params
 
@@ -356,4 +354,3 @@ class SnPFormatter(GenericDataFormatter):
                 'n_kernel': 3,
             }
         self.update_model_params(default_values)
-

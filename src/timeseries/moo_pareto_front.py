@@ -4,7 +4,7 @@ import joblib
 import seaborn as sns
 import telegram_send
 
-from src.timeseries.moo.dual_problem_def import DualQuantileWeights
+from src.timeseries.moo.moea.dual_problem_def import DualQuantileWeights
 from src.timeseries.utils.filename import get_result_folder, quantiles_name, termination_name
 from src.timeseries.utils.files import save_vars
 from src.timeseries.utils.harness import get_model_data_config

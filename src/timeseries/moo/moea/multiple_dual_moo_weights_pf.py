@@ -5,7 +5,7 @@ import joblib
 import seaborn as sns
 import telegram_send
 
-from src.timeseries.moo.dual_problem_def import DualQuantileWeights
+from src.timeseries.moo.moea.dual_problem_def import DualQuantileWeights
 from src.timeseries.utils.filename import get_result_folder, quantiles_name, termination_name
 from src.timeseries.utils.files import save_vars
 from src.timeseries.utils.harness import get_model_data_config
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         'TFTModel_ES_ema_r_q159_lr01_pred',
     ]
 
-    moo_methods = ['NSGA2']#, 'NSGA3', 'MOEAD']
+    moo_methods = ['NSGA2']  # , 'NSGA3', 'MOEAD']
     n_repeats = 5
 
     for experiment_name, results_name in zip(experiment_names, results_names):

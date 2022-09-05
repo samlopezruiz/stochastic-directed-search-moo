@@ -1,7 +1,5 @@
-import time
-
 import numpy as np
-from pymoo.core.problem import ElementwiseProblem, Problem
+from pymoo.core.problem import ElementwiseProblem
 from pymoo.problems.autodiff import AutomaticDifferentiation
 
 
@@ -80,35 +78,3 @@ class AutomaticDifferentiationProblem(AutomaticDifferentiation):
 
     def gradient(self, x):
         return self.evaluate(x, return_values_of=['dF'])
-
-
-if __name__ == '__main__':
-    import autograd.numpy as npa
-
-    scalar_funs = [
-        lambda x: (x[0] - 1) ** 4 + (x[1] - 1) ** 2,
-        lambda x: (x[0] + 1) ** 2 + (x[1] + 1) ** 2,
-    ]
-
-    f3_ag2 = lambda x: npa.array([f(x) for f in scalar_funs])
-
-    from src.moo.core.utils.utestfun import TestFuncs, f3_ag
-
-    tfun = TestFuncs()
-    testfun = tfun.get('t3_ag')
-    problem = ScalarContinuationProblem(f=testfun['f'],
-                                        df=testfun['df'],
-                                        n_var=testfun['n_var'],
-                                        n_obj=testfun['n_obj'],
-                                        xl=testfun['lb'],
-                                        xu=testfun['ub'])
-
-    res = {}
-    # X = np.random.random((10, 2))
-    # new_res = core.do(X, res)
-    X = np.array([-1., -1.])
-    fx = problem.evaluate(X)
-    fx2 = f3_ag(X)
-    # dx = core.gradient(X)
-    # dx.numpy()
-    print('fx: {}, fx: {}, fx: {}'.format(fx, f3_ag(X), f3_ag2(X)))

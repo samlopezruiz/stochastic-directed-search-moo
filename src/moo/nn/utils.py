@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.models import clone_model
 
 
 def params_conversion_weights(weights):
@@ -18,11 +19,10 @@ def reconstruct_weights(ind, params):
     shapes, flatten_dim = params['shapes'], params['flatten_dim']
     reconstruct = []
     ind = ind.reshape(-1, )
+    flatten_dim = np.cumsum(flatten_dim)
+    flatten_dim = np.insert(flatten_dim, 0, 0)
     for i in range(len(shapes)):
-        if i == 0:
-            reconstruct.append(ind[:flatten_dim[i]].reshape(shapes[i]))
-        else:
-            reconstruct.append(ind[flatten_dim[i - 1]:flatten_dim[i - 1] + flatten_dim[i]].reshape(shapes[i]))
+        reconstruct.append(ind[flatten_dim[i]:flatten_dim[i + 1]].reshape(shapes[i]))
 
     return reconstruct
 
@@ -60,29 +60,42 @@ def batch_array(arr, batch_size=None):
     return batches
 
 
+def batch_from_list_or_array(input_, batch_size=None):
+    if isinstance(input_, list):
+        batched_arrs = [batch_array(arr, batch_size) for arr in input_]
+        batched = []
+        for i in range(len(batched_arrs[0])):
+            batched.append([batch[i] for batch in batched_arrs])
+    else:
+        batched = batch_array(input_, batch_size)
+    return batched
+
+
 def predict_from_batches(model,
                          batches,
                          to_numpy=True,
-                         concat_output=True):
-    outputs = []
-    for batch in batches:
-        pred = model(batch)
-        if isinstance(pred, list):
-            outputs.append([(out.numpy() if to_numpy else out) for out in pred])
-        else:
-            outputs.append(pred.numpy() if to_numpy else pred)
+                         concat_output=True,
+                         use_gpu=True):
+    with tf.device('/device:GPU:0' if use_gpu else "/cpu:0"):
+        outputs = []
+        for batch in batches:
+            pred = model(batch)
+            if isinstance(pred, list):
+                outputs.append([(out.numpy() if to_numpy else out) for out in pred])
+            else:
+                outputs.append(pred.numpy() if to_numpy else pred)
 
-    if concat_output:
-        if isinstance(outputs[0], list):
-            concat_outputs = []
-            for i in range(len(outputs[0])):
-                concat_outputs.append(np.concatenate([out[i] for out in outputs], axis=0) if to_numpy
-                                      else tf.concat([out[i] for out in outputs], axis=0))
+        if concat_output:
+            if isinstance(outputs[0], list):
+                concat_outputs = []
+                for i in range(len(outputs[0])):
+                    concat_outputs.append(np.concatenate([out[i] for out in outputs], axis=0) if to_numpy
+                                          else tf.concat([out[i] for out in outputs], axis=0))
+            else:
+                concat_outputs = np.concatenate(outputs, axis=0) if to_numpy else tf.concat(outputs, axis=0)
+            return concat_outputs
         else:
-            concat_outputs = np.concatenate(outputs, axis=0) if to_numpy else tf.concat(outputs, axis=0)
-        return concat_outputs
-    else:
-        return outputs
+            return outputs
 
 
 def get_one_output_model(model, output_layer_name):
@@ -95,7 +108,7 @@ def split_model(model, intermediate_layers):
                                 outputs=[model.get_layer(l).output for l in intermediate_layers])
 
     trainable_model = tf.keras.Model(inputs=[model.get_layer(l).output for l in intermediate_layers],
-                                     outputs=model.outputs)
+                                     outputs=model.outputs, )
 
     base_model.compile()
     trainable_model.compile()

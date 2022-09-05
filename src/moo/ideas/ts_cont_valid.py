@@ -4,7 +4,6 @@ from copy import deepcopy
 
 import joblib
 import numpy as np
-from numpy.linalg import pinv
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.factory import get_sampling, get_crossover, get_mutation, get_termination, get_reference_directions
@@ -13,7 +12,7 @@ from tabulate import tabulate
 
 from src.moo.core.continuation import BiDirectionalDsContinuation
 from src.moo.factory import get_corrector, get_predictor, get_tfun, get_cont_termination
-from src.moo.nn.problem import TsQuantileProblem, GradientTestsProblem
+from src.moo.nn.problem_old import TsQuantileProblem
 from src.moo.nn.utils import batch_array
 from src.timeseries.utils.continuation import get_q_moo_params_for_problem
 from src.timeseries.utils.filename import get_result_folder
@@ -37,35 +36,30 @@ if __name__ == '__main__':
 
     # %%
     t0 = time.time()
-    limits = np.array([1., 1.])
-    problem = GradientTestsProblem(y_train=model_params['y_train'],
-                                   x_train=model_params['x_train'],
-                                   y_valid=model_params['y_valid'],
-                                   x_valid=model_params['x_valid'],
-                                   model=model_params['model'].model,
-                                   eval_fs=[model_params['loss']],
-                                   n_obj=2,
-                                   constraints_limits=limits,
-                                   quantile_ix=0,
-                                   pred_batch_size=2 ** 9,
-                                   grad_batch_size=2 ** 9,
-                                   moo_model_size='small',
-                                   grad_from_batches=False)
-
+    limits = None  # np.array([1., 1.])
+    problem = TsQuantileProblem(y_train=model_params['y_train'],
+                                x_train=model_params['x_train'],
+                                y_valid=model_params['y_valid'],
+                                x_valid=model_params['x_valid'],
+                                model=model_params['model'].model,
+                                eval_fs=[model_params['loss']],
+                                n_obj=2,
+                                constraints_limits=limits,
+                                quantile_ix=0,
+                                base_batch_size=128,
+                                moo_model_size='small')
     print('init core time: {}'.format(round(time.time() - t0, 4)))
 
-    # %%e
+    # %%
     t0 = time.time()
     f0 = problem.evaluate(problem.original_x)
     print('eval time: {:.4} s'.format(time.time() - t0))
 
     t0 = time.time()
-    dx = problem.gradient(problem.original_x)
+    d0 = problem.gradient(problem.original_x)
     print('grad time: {:.4} s'.format(time.time() - t0))
 
-    t0 = time.time()
-    dx_1 = pinv(dx)
-    print('inverse time: {:.4} s'.format(time.time() - t0))
+    # %%
 
     # %%
     if solve_moea:
@@ -108,7 +102,6 @@ if __name__ == '__main__':
                                              eps=1e-5,
                                              maxiter=50),
                               a_fun=lambda a, dx: a,
-                              cvxpy=True,
                               step_eps=2e-2,
                               in_pf_eps=1e-5,  # in_pf_eps=5e-3,
                               maxiter=20)
@@ -132,23 +125,70 @@ if __name__ == '__main__':
                    headers=list(results['evaluations'][list(results['evaluations'].keys())[0]].keys())))
 
     # %%
+    print('...evaluating with valid data')
+    pred_corr_keys = {'X_p': 'F_p', 'X_c': 'F_c'}
+    valid_population = [deepcopy(res['population']) for res in results['independent']]
+
+    for pop in valid_population:
+        pop['F'] = np.array([problem.eval_valid(ind) for ind in pop['X']])
+        for x, f in pred_corr_keys.items():
+            ans = []
+            for epoch in pop[x]:
+                ans.append([problem.eval_valid(ind) for ind in epoch])
+            pop[f] = ans
+
+    # %%
+    F_valid = np.array([problem.eval_valid(x) for x in results['population']['X']])
+    plot_2D_points_vectors(results['population']['F'],
+                           vectors=F_valid - results['population']['F'],
+                           pareto=None,
+                           scale=0.5,
+                           arrow_scale=0.4,
+                           point_name='train',
+                           vector_name='valid',
+                           markersize=5,
+                           save=False,
+                           save_png=False,
+                           file_path=None,
+                           title=None,
+                           size=(1980, 1080),
+                           )
+
+    # %%
     file_path = os.path.join(results_folder, 'img', cfg['problem_name'])
     train_population = [res['population'] for res in results['independent']]
 
+    F_valid_sorted = F_valid[np.argsort(F_valid[:, 0])]
     pareto = {'pf': None}
-    plot_bidir_2D_points_vectors(train_population,
-                                 pareto,
-                                 arrow_scale=0.4,
-                                 markersize=5,
-                                 pareto_marker_mode='markers+lines',
-                                 save=cfg['save_plots'],
-                                 save_png=False,
-                                 file_path=file_path,
-                                 size=(1980, 1080),
-                                 plot_arrows=True,
-                                 plot_points=True,
-                                 plot_ps=False,
-                                 return_fig=False)
+    train_fig = plot_bidir_2D_points_vectors(train_population,
+                                             pareto,
+                                             arrow_scale=0.4,
+                                             markersize=5,
+                                             pareto_marker_mode='markers+lines',
+                                             save=cfg['save_plots'],
+                                             save_png=False,
+                                             file_path=file_path,
+                                             size=(1980, 1080),
+                                             plot_arrows=True,
+                                             plot_points=True,
+                                             plot_ps=False,
+                                             return_fig=True)
+
+    valid_fig = plot_bidir_2D_points_vectors(valid_population,
+                                             pareto,
+                                             arrow_scale=0.4,
+                                             markersize=5,
+                                             pareto_marker_mode='markers+lines',
+                                             save=cfg['save_plots'],
+                                             save_png=False,
+                                             file_path=file_path,
+                                             size=(1980, 1080),
+                                             plot_arrows=True,
+                                             plot_points=True,
+                                             plot_ps=False,
+                                             return_fig=True)
+
+    plot_traces([train_fig.data, valid_fig.data])
 
     if solve_moea:
         pareto = {'pf': pf if solve_moea else None, 'ps': ps if solve_moea else None}
@@ -167,10 +207,13 @@ if __name__ == '__main__':
     # %%
     hv_moea_train = get_hypervolume(pf, ref=[2., 2.]) if solve_moea else np.nan
     hv_train = get_hypervolume(results['population']['F'], ref=[2., 2.])
+    hv_valid = get_hypervolume(F_valid, ref=[2., 2.])
+    hv_moea_valid = get_hypervolume(np.array([problem.eval_valid(x) for x in ps]),
+                                    ref=[2., 2.]) if solve_moea else np.nan
 
     hvs = {}
-    for hv, key in zip([hv_train, hv_moea_train],
-                       ['train/cont', 'train/moea']):
+    for hv, key in zip([hv_train, hv_valid, hv_moea_train, hv_moea_valid],
+                       ['train/cont', 'valid/cont', 'train/moea', 'valid/moea']):
         hvs[key] = hv
 
     print(tabulate(hvs.items(),

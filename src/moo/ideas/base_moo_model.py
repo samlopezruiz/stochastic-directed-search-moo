@@ -13,7 +13,7 @@ from tabulate import tabulate
 from src.models.attn.nn_funcs import QuantileLossCalculator
 from src.moo.core.continuation import BiDirectionalDsContinuation
 from src.moo.factory import get_corrector, get_predictor, get_tfun, get_cont_termination
-from src.moo.nn.problem import TsQuantileProblem
+from src.moo.nn.problem_old import TsQuantileProblem
 from src.moo.nn.utils import batch_array, predict_from_batches, get_one_output_model, split_model, \
     params_conversion_weights, reconstruct_weights
 from src.timeseries.utils.continuation import get_q_moo_params_for_problem

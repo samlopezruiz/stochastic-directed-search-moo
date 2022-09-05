@@ -16,7 +16,7 @@ from src.moo.core.continuation import ContinuationBoxes
 from src.moo.core.problem import AutomaticDifferentiationProblem
 from src.moo.factory import get_tfun, get_corrector, get_predictor
 from src.moo.utils.indicators import hypervolume
-from src.utils.plot import plot_boxes_3d, plot_points_3d, plot_traces
+from src.utils.plot import plot_boxes_3d, plot_points_4d, plot_traces
 
 pio.renderers.default = "browser"
 if __name__ == '__main__':
@@ -25,7 +25,7 @@ if __name__ == '__main__':
            'problem_name': 'zdt2'
            }
 
-    solve_moea = True
+    solve_moea = False
     plot_boxes = False
 
     tfun = TestFuncs()
@@ -88,11 +88,10 @@ if __name__ == '__main__':
     ds_cont = ContinuationBoxes(problem=problem,
                                 predictor=predictor,
                                 corrector=corrector,
-                                f_limits=f_limits,
-                                c=0.8,
+                                limits=f_limits,
+                                tree_h_coef=0.8,
                                 # h_max=14,
                                 step_eps=9e-2,
-                                debug=True,
                                 history=True,
                                 )
 
@@ -119,7 +118,7 @@ if __name__ == '__main__':
         boxes_edges = ds_cont.boxes.get_boxes()
         box_fig = plot_boxes_3d(boxes_edges, return_fig=True)
 
-        pts_fig = plot_points_3d(points['fx'],
+        pts_fig = plot_points_4d(points['fx'],
                                  secondary=points['c'],
                                  mask=points['best_ix'],
                                  return_fig=True,
@@ -127,7 +126,7 @@ if __name__ == '__main__':
 
         plot_traces([box_fig.data, pts_fig.data])
 
-    plot_points_3d(points['fx'],
+    plot_points_4d(points['fx'],
                    secondary=points['c'],
                    mask=points['best_ix'],
                    markersize=5,
@@ -135,7 +134,7 @@ if __name__ == '__main__':
                    title='Continuation method Pareto Front')
 
     if solve_moea:
-        plot_points_3d(pf_moea, markersize=7, title='MOEA method Pareto Front')
+        plot_points_4d(pf_moea, markersize=7, title='MOEA method Pareto Front')
 
     # %%
     F = points['fx']
@@ -145,6 +144,6 @@ if __name__ == '__main__':
     rds = ReferenceDirectionSurvival(ref_dirs)
     niching = rds.do(problem, pop, n_survive=500)
     opt = rds.opt.get('F')
-    plot_points_3d(opt,
+    plot_points_4d(opt,
                    markersize=8,
                    title='Continuation method Pareto Front with nitching')

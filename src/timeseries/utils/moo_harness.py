@@ -14,7 +14,7 @@ from pymoo.optimize import minimize
 # from algorithms.moo.utils.plot import plot_runs, plot_boxplot
 # from algorithms.moo.utils.utils import get_moo_args, get_hv_hist_vs_n_evals
 # from timeseries.data.market.files.utils import save_df
-# from timeseries.experiments.utils.files import save_vars
+# from timeseries.ideas.utils.files import save_vars
 #
 # from timeseries.utils.utils import get_type_str, array_from_lists, mean_std_from_array
 from src.models.moo.smsemoa import SMSEMOA

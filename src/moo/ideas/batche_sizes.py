@@ -14,7 +14,7 @@ from tensorflow.python.training.gradient_descent import GradientDescentOptimizer
 
 from src.moo.core.continuation import BiDirectionalDsContinuation
 from src.moo.factory import get_corrector, get_predictor, get_tfun, get_cont_termination
-from src.moo.nn.problem import TsQuantileProblem, GradientTestsProblem
+from src.moo.nn.problem_old import TsQuantileProblem, GradientTestsProblem
 from src.moo.nn.utils import predict_from_batches, batch_array
 from src.timeseries.utils.continuation import get_q_moo_params_for_problem
 from src.timeseries.utils.filename import get_result_folder
@@ -50,10 +50,10 @@ if __name__ == '__main__':
                                    n_obj=2,
                                    constraints_limits=limits,
                                    quantile_ix=0,
-                                   pred_batch_size=2 ** 9,
-                                   grad_batch_size=2 ** 9,
+                                   base_batch_size=2 ** 9,
+                                   moo_batch_size=2 ** 9,
                                    moo_model_size='small',
-                                   grad_from_batches=False)
+                                   moo_from_batches=False)
 
     print('init core time: {}'.format(round(time.time() - t0, 4)))
 
@@ -159,8 +159,8 @@ if __name__ == '__main__':
 
     cfgs_results = []
     for grad_batch_size, grad_from_batches in batches_cfgs:
-        problem.grad_from_batches = grad_from_batches
-        problem.grad_batch_size = grad_batch_size
+        problem.moo_from_batches = grad_from_batches
+        problem.moo_batch_size = grad_batch_size
 
         predictor = get_predictor('no_adjustment', problem=problem)
 

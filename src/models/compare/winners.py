@@ -1,7 +1,42 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import ranksums
+from scipy.stats import ranksums, kruskal
 
+
+# def wilcoxon_significance(list_of_lists, labels, p_thold=0.05):
+#     n = len(list_of_lists)
+#
+#     p_values = np.zeros((n, n))
+#     for i in range(n):
+#         for j in range(n):
+#             if i != j:
+#                 sign = int(np.mean(list_of_lists[i]) > np.mean(list_of_lists[j])) * 2 - 1
+#                 p_values[i, j] = int(ranksums(list_of_lists[i], list_of_lists[j]).pvalue < p_thold) * sign
+#
+#     # p_values = p_values + p_values.T
+#     return pd.DataFrame(p_values, columns=labels, index=labels)
+
+def kruskal_significance(list_of_lists, label='', **kwargs):
+    pvalue = kruskal(*list_of_lists, **kwargs).pvalue
+    if pvalue < 0.05:
+        msg = 'The median is <b>not equal</b> across all <b>{}</b> groups. (p={:.2f})'.format(label, pvalue)
+    else:
+        msg = 'The median is <b>equal</b> across all <b>{}</b> groups. (p={:.2f})'.format(label, pvalue)
+
+    return {'msg': msg, 'pvalue': pvalue}
+
+def wilcoxon_significance(list_of_lists, labels, p_thold=0.05):
+    n = len(list_of_lists)
+
+    p_values = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                greater_than = int(ranksums(list_of_lists[i], list_of_lists[j], alternative='greater').pvalue < p_thold)
+                less_than = - int(ranksums(list_of_lists[i], list_of_lists[j], alternative='less').pvalue < p_thold)
+                p_values[i, j] = greater_than + less_than
+
+    return pd.DataFrame(p_values, columns=labels, index=labels)
 
 def wilcoxon_rank(arr, labels, alternative='less'):
     '''

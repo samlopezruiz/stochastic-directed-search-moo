@@ -14,13 +14,10 @@ class MaxIter(Termination):
     def __init__(self, maxiter):
         self.maxiter = maxiter
 
-        super().__init__('n_iter')
+        super().__init__('iterations')
 
     def has_next(self, algorithm):
-        if algorithm.iter >= self.maxiter:
-            print('iterations exceeded: ended with {} it'.format(algorithm.iter))
-            return False
-        return True
+        return algorithm.iter < self.maxiter and not algorithm.end_flag
 
 
 class Tol(Termination):
@@ -31,15 +28,12 @@ class Tol(Termination):
 
     def has_next(self, algorithm):
         tol = squared_norm_mul_along_axis(algorithm.a, algorithm.dx)
-        if tol >= self.tol and algorithm.iter > 1:
-            print('tol exceeded: ended with {} it'.format(algorithm.iter))
-            return False
-        return True
+        return not (tol >= self.tol and algorithm.iter > 1) and not algorithm.end_flag
 
 
 class NullTermination(Termination):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__(name='None')
 
     def has_next(self, algorithm):
-        return True
+        return not algorithm.end_flag

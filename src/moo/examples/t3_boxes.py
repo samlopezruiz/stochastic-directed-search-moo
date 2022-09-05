@@ -48,9 +48,8 @@ if __name__ == '__main__':
     ds_cont = ContinuationBoxes(problem=problem,
                                 predictor=predictor,
                                 corrector=corrector,
-                                f_limits=f_limits,
-                                c=0.5,
-                                dir=-1,
+                                limits=f_limits,
+                                tree_h_coef=0.5,
                                 step_eps=5e-1,
                                 history=True,
                                 )

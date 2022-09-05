@@ -31,26 +31,28 @@ if __name__ == '__main__':
     # %%
     x0 = [-0.10360, -0.48965]
     x0 = [-0., -0.]  # not in PF
+    limits = [7., 7.]
 
-    predictor = get_predictor('no_adjustment', problem=problem)
+    predictor = get_predictor('no_adjustment',
+                              problem=problem,
+                              limits=limits)
 
     corrector = get_corrector('delta_criteria',
                               problem=problem,
-                              t_fun=get_tfun('weighted_dominance',
+                              t_fun=get_tfun('angle',
                                              problem=problem,
-                                             eps=1e-5,
-                                             maxiter=10),
+                                             eps=45,
+                                             maxiter=20),
                               a_fun=lambda a, dx: a,
                               step_eps=5e-1,
-                              in_pf_eps=1e-3,
-                              maxiter=10)
+                              in_pf_eps=2e-4,
+                              maxiter=20)
 
     ds_cont = BiDirectionalDsContinuation(problem=problem,
                                           predictor=predictor,
                                           corrector=corrector,
-                                          step_eps=5e-1,
-                                          termination=get_cont_termination('tol', tol=1e-3),
-                                          history=True,
+                                          step_eps=9e-1,
+                                          termination=get_cont_termination('tol', tol=1.7e-3),
                                           )
 
     t0 = time.time()
@@ -60,17 +62,21 @@ if __name__ == '__main__':
     print('f(x) evals: {}, dx(x) evals: {}'.format(problem.n_f_evals, problem.n_grad_evals))
     pprint(results['evaluations'])
 
-    # %%
     file_path = os.path.join('../img', cfg['problem_name'])
     pareto = {'pf': testfun['pf'], 'ps': testfun['ps']}
     plot_populations = [res['population'] for res in results['independent']]
+    descent = [res['descent'] for res in results['independent']]
     plot_bidir_2D_points_vectors(plot_populations,
                                  pareto,
+                                 descent,
                                  arrow_scale=0.4,
+                                 line_width=2.5,
+                                 label_scale=1.5,
                                  markersize=5,
                                  save=cfg['save_plots'],
                                  save_png=False,
                                  file_path=file_path,
                                  size=(1980, 1080),
+                                 plot_title=False,
                                  plot_arrows=True,
                                  plot_points=True)

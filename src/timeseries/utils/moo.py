@@ -69,6 +69,11 @@ def aggregate_qcd_qee(ql):
 #
 #     return np.argsort(ranks)
 
+def sort_arr_1st_col(X):
+    ix = np.argsort(X, axis=0)
+    X_sorted = X[ix[:, 0], :]
+    return X_sorted
+
 
 def sort_1st_col(X, F, eq_F=None):
     ix = np.argsort(F, axis=0)

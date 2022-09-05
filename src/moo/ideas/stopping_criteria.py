@@ -5,7 +5,6 @@ from pprint import pprint
 import joblib
 import numpy as np
 import pandas as pd
-from cvxpy.constraints.constraint import Constraint
 from numpy.linalg import pinv, matrix_rank
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.factory import get_sampling, get_crossover, get_mutation, get_termination, get_reference_directions
@@ -13,11 +12,10 @@ from scipy.optimize import minimize
 from sklearn.model_selection import train_test_split
 from tabulate import tabulate
 from tensorflow.python.training.gradient_descent import GradientDescentOptimizer
-from tensorflow_constrained_optimization.python.train.constrained_optimizer import Formulation
 
 from src.moo.core.continuation import BiDirectionalDsContinuation
 from src.moo.factory import get_corrector, get_predictor, get_tfun, get_cont_termination
-from src.moo.nn.problem import TsQuantileProblem, GradientTestsProblem
+from src.moo.nn.problem_old import TsQuantileProblem, GradientTestsProblem
 from src.moo.nn.utils import predict_from_batches, batch_array
 from src.moo.utils.functions import in_pareto_front
 from src.timeseries.utils.continuation import get_q_moo_params_for_problem
@@ -75,8 +73,8 @@ if __name__ == '__main__':
     # %%
     problem.constraints_limits = None
     problem.n_constr = 0
-    problem.grad_from_batches = True
-    problem.grad_batch_size = 2 ** 13
+    problem.moo_from_batches = True
+    problem.moo_batch_size = 2 ** 13
 
     predictor = get_predictor('no_adjustment', problem=problem)
 
@@ -87,7 +85,6 @@ if __name__ == '__main__':
                                              eps=1e-4,
                                              maxiter=50),
                               a_fun=lambda a, dx: a,
-                              cvxpy=True,
                               step_eps=2e-2,
                               in_pf_eps=3e-4,
                               maxiter=20)
@@ -97,15 +94,63 @@ if __name__ == '__main__':
                                           corrector=corrector,
                                           limits=limits,
                                           step_eps=2e-2,
-                                          termination=get_cont_termination('n_iter', maxiter=2),
+                                          termination=get_cont_termination('tol', tol=8e-4),
                                           history=True)
 
+    t0 = time.time()
+    problem.n_f_evals, problem.n_grad_evals = 0, 0
     results = ds_cont.run(np.reshape(problem.original_x, (-1)))
+    print('time: {} s'.format(round(time.time() - t0, 4)))
+    print('f(x) evals: {}, dx(x) evals: {}'.format(problem.n_f_evals, problem.n_grad_evals))
+    print(tabulate([[name, *inner.values()] for name, inner in results['evaluations'].items()],
+                   headers=list(results['evaluations'][list(results['evaluations'].keys())[0]].keys()),
+                   tablefmt='psql'))
+
+    hv = round(get_hypervolume(results['population']['F'], ref=[2., 2.]), 6)
 
     # %%
-    res = results['population']
+    file_path = os.path.join(results_folder, 'img', cfg['problem_name'])
 
-    i = 1
+    figs_data = []
+    pareto = {'pf': None}
+    plot_populations = [res['population'] for res in results['independent']]
+
+    plot_bidir_2D_points_vectors(plot_populations,
+                                 pareto,
+                                 arrow_scale=0.4,
+                                 markersize=5,
+                                 pareto_marker_mode='markers+lines',
+                                 save=cfg['save_plots'],
+                                 save_png=False,
+                                 file_path=file_path,
+                                 size=(1980, 1080),
+                                 plot_arrows=True,
+                                 plot_points=True,
+                                 plot_ps=False)
+
+    # %% stopping criteria
+    from numpy.linalg import norm
+
+    res = results['population']
+    u, s, v = np.linalg.svd(dx)
+    rank = np.sum(s > 0.1)
+    tols, deltas, ranks = [], [], []
+    for x, a in zip(res['X'], res['as']):
+        dx = problem.gradient(x)
+        tols.append(norm(np.dot(dx.T, a.reshape(-1, 1))) ** 2)
+        v, delta = in_pareto_front(dx, a)
+        deltas.append(delta)
+        ranks.append(matrix_rank(dx, tol=1e-4))
+
+    df = pd.DataFrame()
+    df['fx_0'] = res['F'][:, 0]
+    df['fx_1'] = res['F'][:, 1]
+    df['tol'] = tols
+    df['delta'] = deltas
+    df['rank'] = ranks
+
+    # %%
+    i = 5
     x = res['X'][i]
     fx = res['F'][i]
     a = res['as'][i]
@@ -116,9 +161,85 @@ if __name__ == '__main__':
     f0 = problem.evaluate(x0)
     d0 = problem.gradient(x0)
 
+
+    # %%
+    def in_pareto_front(dx, d):
+        var0 = np.zeros((dx.shape[1] + 1))
+
+        cons = ({'type': 'eq', 'fun': lambda var: np.matmul(dx, var[:-1]) - var[-1] * d})
+
+        bnds = [(None, None)] * dx.shape[1] + [(0, None)]
+        res = minimize(lambda var: (norm(var[:-1], ord=2) ** 2) / 2 - var[-1],
+                       x0=var0,
+                       constraints=cons,
+                       bounds=bnds)
+        v, delta = res['x'][:-1], res['x'][-1]
+
+        return v, delta
+
+
+    # %%
+    # v, delta = in_pareto_front(dx, a)
+    # print(f'delta: {delta}')
+    # print(f'norm(v): {(norm(v, ord=2) ** 2) / 2}')
+    # print(f'f_min: {((norm(v, ord=2) ** 2) / 2) - delta}')
+    #
+    # tol = norm(np.dot(dx.T, a.reshape(-1, 1))) ** 2
+    # print(f'tol: {tol}')
+    #
+    # d = np.matmul(dx, v) / delta
+    # print('{}, {}'.format(a, d))
+
+    print('-' * 20)
+    v, delta = in_pareto_front(d0, a0)
+    print(f'delta: {delta}')
+    print(f'norm(v): {(norm(v, ord=2) ** 2) / 2}')
+    print(f'f_min: {((norm(v, ord=2) ** 2) / 2) - delta}')
+
+    tol = norm(np.dot(d0.T, a0.reshape(-1, 1))) ** 2
+    print(f'tol: {tol}')
+
+    d = np.matmul(d0, v) / delta
+    print('{}, {}'.format(a0, d))
+
+    # %%
+    dx, a = d0, a0
+    v_plus = np.matmul(pinv(dx), a)
+    ans = np.matmul(dx, v_plus)
+
+    v_plus /= norm(v_plus)
+    delta = np.mean(np.matmul(dx, v_plus) / a)
+
+    print(f'norm(v): {(norm(v_plus, ord=2) ** 2) / 2}, delta: {delta}')
+    print(f'f_min: {((norm(v_plus, ord=2) ** 2) / 2) - delta}')
+
+    # %%
+    alpha = 0.5
+    v_plus *= alpha
+    delta_1 = np.matmul(dx, v_plus) / a
+    print('{} {}'.format(delta_1, delta_1[0] - delta_1[1]))
+    delta = np.mean(delta_1)
+    print(f'norm(v): {(norm(v_plus, ord=2) ** 2) / 2}, delta: {delta}')
+    print(f'f_min: {((norm(v_plus, ord=2) ** 2) / 2) - delta}')
+
+    # %%
+    d = np.matmul(dx, v_plus) / delta
+    print('{}, {}'.format(a, d))
 # %%
-import tensorflow as tf
+# # %%
+# import tensorflow as tf
+# import tensorflow_probability as tfp
 #
+# x = tf.Variable(0.)
+# loss_fn = lambda: (x - 5.) ** 2
+# losses = tfp.math.minimize(loss_fn,
+#                            num_steps=100,
+#                            optimizer=tf.optimizers.Adam(learning_rate=0.1))
+#
+# # In TF2/eager mode, the optimization runs immediately.
+# print("optimized value is {} with loss {}".format(x, losses[-1]))
+#
+# # %%
 # d = tf.constant(a, dtype=tf.float32)
 # var = tf.zeros((1, dx.shape[1] + 1))
 # dx_tf = tf.Variable(dx)
@@ -126,21 +247,11 @@ import tensorflow as tf
 # eq_const = tf.linalg.matmul(dx, tf.reshape(var[:, :-1], [-1, 1])) - \
 #            tf.reshape(tf.math.scalar_mul(var[0, -1], d), [-1, 1])
 #
-# v_tf = tf.Variable(tf.zeros((1, dx.shape[1])), dtype=tf.float32, name='v')
-# delta_tf = tf.Variable(0.0, dtype=tf.float32, name='delta')
-# d_tf = tf.constant(d, dtype=tf.float32)
-# dx_tf = tf.constant(dx, dtype=tf.float32)
+# # %%
+# import tensorflow as tf
 #
-# vars = [delta_tf] + [v_tf]
-# with tf.GradientTape(persistent=True) as tape:
-#     loss = (tf.norm(v_tf, ord=2, axis=1) ** 2) / 2 - delta_tf
-#
-# grads = tape.gradient(loss, vars)
-
-# %%
-
-# Use the GitHub version of TFCO
-# !pip install git+https://github.com/google-research/tensorflow_constrained_optimization
+# # Use the GitHub version of TFCO
+# # !pip install git+https://github.com/google-research/tensorflow_constrained_optimization
 # import tensorflow_constrained_optimization as tfco
 #
 #
@@ -148,7 +259,7 @@ import tensorflow as tf
 #     def __init__(self, dx, d):
 #         self.v = tf.Variable(tf.zeros((1, dx.shape[1])), dtype=tf.float32, name='v')
 #         self.delta = tf.Variable(0.0, dtype=tf.float32, name='delta')
-#         self.dx = tf.constant(dx, dtype=tf.float32)
+#         self.dx = dx
 #         self.d = tf.constant(d, dtype=tf.float32)
 #
 #     @property
@@ -156,98 +267,35 @@ import tensorflow as tf
 #         return 4
 #
 #     def objective(self):
-#         return (tf.norm(self.v, ord=2, axis=1) ** 2) / 2 - self.delta
+#         return (tf.norm(self.v, ord=2, axis=0) ** 2) / 2 - self.delta
 #
 #     def constraints(self):
 #         eq_const = tf.linalg.matmul(self.dx, tf.reshape(self.v, [-1, 1])) - \
 #                    tf.reshape(tf.math.scalar_mul(self.delta, self.d), [-1, 1])
 #
-#         # constraints = tf.concat([eq_const, -eq_const], axis=0)
 #         constraints = tf.reshape(tf.concat([eq_const, -eq_const], axis=0), [-1])
 #         return constraints
 #
 #
-# min_problem = SampleProblem(dx, a)
+# problem = SampleProblem(dx, a)
 #
 # optimizer = tfco.LagrangianOptimizer(
-#     optimizer=tf.optimizers.Adagrad(learning_rate=0.05),
-#     num_constraints=min_problem.num_constraints
+#     optimizer=tf.optimizers.Adagrad(learning_rate=0.1),
+#     num_constraints=problem.num_constraints
 # )
 #
-# optimizer = tfco.ConstrainedOptimizer(
-#     formulation=Formulation(),
-#     optimizer=tf.optimizers.Adagrad(learning_rate=0.05),
-#     num_constraints=min_problem.num_constraints
-# )
+# const = problem.constraints()
 #
-# const = min_problem.constraints()
-# loss = min_problem.objective()
+# var_list = list(problem.trainable_variables) + optimizer.trainable_variables()
 #
-# var_list = list(min_problem.trainable_variables) + optimizer.trainable_variables()
-# var_list = list(min_problem.trainable_variables)
-# var_list = [min_problem.delta, min_problem.v] + list(min_problem.trainable_variables) + optimizer.trainable_variables()
-
-
-# %%
-# for i in range(10000):
-#     optimizer.minimize(min_problem, var_list=var_list)
-#     if i % 1000 == 0:
+# for i in range(100):
+#     optimizer.minimize(problem, var_list=var_list)
+#     if i % 10 == 0:
 #         print(f'step = {i}')
-#         print(f'loss = {min_problem.objective().numpy()[0]}')
-#         print(f'constraint = {min_problem.constraints().numpy().T}')
-#
-# # %%
-# delta_res, v_res = [var.numpy() for var in min_problem.trainable_variables]
-#
-# d = np.matmul(dx, v_res.reshape(-1, 1)) / delta_res
-# print('{}, {}'.format(a, d))
+#         print(f'loss = {loss_fn()}')
+#         print(f'constraint = {(x + y).numpy()}')
+#         print(f'x = {x.numpy()}, y = {y.numpy()}')
 
 # %%
-from numpy.linalg import norm
-
-
-def in_pareto_front(dx, d):
-    var0 = np.zeros((dx.shape[1] + 1))
-
-    cons = ({'type': 'eq', 'fun': lambda var: np.matmul(dx, var[:-1]) - var[-1] * d})
-
-    bnds = [(None, None)] * dx.shape[1] + [(0, None)]
-    res = minimize(lambda var: (norm(var[:-1], ord=2) ** 2) / 2 - var[-1],
-                   x0=var0,
-                   constraints=cons,
-                   bounds=bnds)
-    v, delta = res['x'][:-1], res['x'][-1]
-
-    return v, delta
-
-
-v_res0, delta_res0 = in_pareto_front(dx, a)
-d = np.matmul(dx, v_res0) / delta_res0
-print('{}, {}'.format(a, d))
-print('delta: {}'.format(delta_res0))
 
 # %%
-import cvxpy as cp
-
-
-def in_pareto_front(dx, d):
-    v_cp = cp.Variable(dx.shape[1])
-    delta_cp = cp.Variable()
-
-    eq = cp.matmul(dx, v_cp) - delta_cp * d == 0.0
-    loss = (cp.norm(v_cp, p=2) ** 2) / 2 - delta_cp
-
-    constraints = [0 <= delta_cp, eq]
-    objective = cp.Minimize(loss)
-
-    prob = cp.Problem(objective, constraints)
-
-    result = prob.solve()
-    v = v_cp.value
-    return v_cp.value, delta_cp.value
-
-
-v_res0, delta_res0 = in_pareto_front(dx, a)
-d = np.matmul(dx, v_res0) / delta_res0
-print('{}, {}'.format(a, d))
-print('delta: {}'.format(delta_res0))

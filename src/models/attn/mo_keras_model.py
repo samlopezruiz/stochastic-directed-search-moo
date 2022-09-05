@@ -1,11 +1,16 @@
 import tensorflow as tf
-from keras.engine import data_adapter
+from tensorflow.python.keras.engine import data_adapter
+
+# from tensorflow.python.keras import Model
 
 """
 Multi Objective Model 
 Consider only first output of model to train and predictions.
 The other outputs are attention outputs. 
 """
+
+
+# Model()
 class MOModel(tf.keras.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

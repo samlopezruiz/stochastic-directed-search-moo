@@ -60,6 +60,17 @@ def mean_std_text_df(df, label, round=3):
     return text
 
 
+def concat_mean_std_df(df, cols, round=3):
+    new_df = pd.DataFrame()
+    for col in cols:
+
+        mean = df[col] if df[col].dtype == np.dtype('O') else df[col].round(round).astype(str)
+        std = df[col + '_std'] if df[col].dtype == np.dtype('O') else df[col + '_std'].round(round).astype(str)
+        new_df[col] = (mean + ' (' + std + ')')
+
+    return new_df
+
+
 def mean_std_from_array(arr, labels):
     df = pd.DataFrame()
     df['mean'] = np.mean(arr, axis=1)

@@ -9,7 +9,7 @@ from src.moo.examples.nn_standalone.iris import iris_model, iris_data
 from src.moo.examples.utils.metrics import classification_eval_metrics
 
 from src.moo.loss.classification import moo_classification_weights, WeightedCategoricalCrossentropy
-from src.moo.nn.problem import ClassificationProblem
+from src.moo.nn.problem_old import ClassificationProblem
 from src.utils.plot import plot_2D_points_traces
 
 pio.renderers.default = "browser"
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         # plot_points_3d(precision, markersize=7, title='MOEA precision')
         # plot_points_3d(precision, markersize=7, title='MOEA precision')
 
-    #%%
+    # %%
 
     # %%
     # x0 = None

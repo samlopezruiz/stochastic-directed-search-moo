@@ -50,3 +50,99 @@ def in_pareto_front(dx, d, cvxpy=False):
 
 def step_size_norm(step_eps, dx, v):
     return step_eps / norm(np.matmul(dx, v))
+
+
+# simple moving average
+class SMA:
+
+    def __init__(self, n):
+        self.n = n
+        self.sma = None
+        self.counter = 0
+
+    def do(self, x):
+        if self.sma is None:
+            self.sma = x
+        else:
+            self.sma = self.sma + (x - self.sma) / self.counter
+            # self.sma = (self.sma * (self.n - 1) / self.n) + x / self.n
+        self.counter = min(self.counter + 1, self.n)
+
+        return self.sma
+
+    def reset(self):
+        self.sma = None
+        self.counter = 0
+
+
+class MEAN:
+
+    def __init__(self):
+        self.n = 0
+        self.mean = None
+        self.counter = 0
+
+    def do(self, x):
+        if self.mean is None:
+            self.mean = x
+        else:
+            self.mean = self.mean * (self.n / (self.n + 1)) + x / (self.n + 1)
+        self.n += 1
+
+        return self.mean
+
+    def reset(self):
+        self.mean = None
+        self.counter = 0
+
+
+# exponential moving average
+class EMA:
+    def __init__(self, n):
+        self.ema = None
+        self.counter = 0
+        self.n = n
+        self.c1 = 2 / (1 + self.counter)
+        self.c2 = 1 - (2 / (1 + self.counter))
+
+    def do(self, x):
+        if self.ema is None:
+            self.ema = x
+        else:
+            self.c1 = 2 / (1 + self.counter)
+            self.c2 = 1 - (2 / (1 + self.counter))
+            self.ema = x * self.c1 + self.c2 * self.ema
+
+        self.counter = min(self.counter + 1, self.n)
+        return self.ema
+
+    def reset(self):
+        self.ema = None
+        self.counter = 0
+
+
+# def ema(x, period, last_ema=None):
+#     c1 = 2 / (1 + period)
+#     c2 = 1 - (2 / (1 + period))
+#     x = np.array(x)
+#     if last_ema is None:
+#         ema_x = np.array(x)
+#         for i in range(1, ema_x.shape[0]):
+#             ema_x[i] = x[i] * c1 + c2 * ema_x[i - 1]
+#     else:
+#         ema_x = np.zeros((len(x) + 1,))
+#         ema_x[0] = last_ema
+#         for i in range(1, ema_x.shape[0]):
+#             ema_x[i] = x[i] * c1 + c2 * ema_x[i - 1]
+#         ema_x = ema_x[1:]
+#     return ema_x
+
+if __name__ == '__main__':
+    m = MEAN()
+
+    x = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    for xi in x:
+        mean = m.do(xi)
+        print(mean)
+
+    print(mean)

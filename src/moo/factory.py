@@ -3,10 +3,10 @@
 # =========================================================================================================
 from pymoo.factory import get_from_list
 
-from src.moo.core.corrector import DsCorrector, DeltaCriteriaCorrector, DeltaCriteriaCorrectorValid, DsCorrector2
-from src.moo.core.predictor import StepAdjust, NoAdjustmentPredictors
-from src.moo.core.stepsize import Dominance, AngleBisection, Armijo, WeightedDominance
-from src.moo.core.termination import MaxIter, Tol
+from src.moo.core.corrector import DeltaCorrector, RankCorrector, ProjectionCorrector
+from src.moo.core.predictor import StepAdjust, NoAdjustmentPredictors, LimitsPredictors
+from src.moo.core.stepsize import Dominance, AngleBisection, Armijo, WeightedDominance, Angle
+from src.moo.core.termination import MaxIter, Tol, NullTermination
 
 
 # =========================================================================================================
@@ -15,6 +15,7 @@ from src.moo.core.termination import MaxIter, Tol
 
 def get_tfun_options():
     SAMPLING = [
+        ("angle", Angle),
         ("dominance", Dominance),
         ("angle_bisection", AngleBisection),
         ("armijo", Armijo),
@@ -34,9 +35,9 @@ def get_tfun(name, *args, d={}, **kwargs):
 
 def get_corrector_options():
     SAMPLING = [
-        ("ds", DsCorrector2),
-        ("delta_criteria", DeltaCriteriaCorrector),
-        ("delta_valid", DeltaCriteriaCorrectorValid)
+        ("projection", ProjectionCorrector),
+        ("rank", RankCorrector),
+        ("delta", DeltaCorrector)
     ]
 
     return SAMPLING
@@ -52,6 +53,7 @@ def get_corrector(name, *args, d={}, **kwargs):
 
 def get_termination_options():
     SAMPLING = [
+        ("none", NullTermination),
         ("n_iter", MaxIter),
         ("tol", Tol)
     ]
@@ -71,6 +73,7 @@ def get_predictor_options():
     SAMPLING = [
         ("step_adjust", StepAdjust),
         ("no_adjustment", NoAdjustmentPredictors),
+        ("limit", LimitsPredictors),
     ]
 
     return SAMPLING

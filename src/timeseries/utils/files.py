@@ -43,8 +43,9 @@ def save_df(df, file_path, use_date_suffix=False):
 def save_vars(vars, file_path, extension='.z', use_date_suffix=False):
     create_dir(file_path)
     path = get_new_file_path(file_path, extension, use_date_suffix)
-    print('\nSaving vars: \n{}'.format(path))
+    print('Saving vars...')
     joblib.dump(vars, path)
+    print('\nSaved vars: \n{}'.format(path))
 
 
 def create_dir(file_path, filename_included=True):
@@ -57,8 +58,3 @@ def create_dir(file_path, filename_included=True):
             path = os.path.join(*file_path[:i])
             if not os.path.exists(path):
                 os.makedirs(path)
-
-
-
-
-
