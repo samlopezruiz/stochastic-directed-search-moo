@@ -189,11 +189,12 @@ def plot_pf_and_total(results, results_folder, cfg, cont_cfg):
 
     plot_2D_points_traces_total([F_sorted, fx_ini],
                                 names=['cont', 'ini'],
-                                markersizes=[5, 15],
+                                markersizes=[10, 20],
                                 marker_symbols=['circle', 'asterisk'],
                                 modes=['markers+lines', 'markers'],
                                 save=cfg['save_plots'],
                                 outlines=[False, True],
+                                label_scale=1.8,
                                 file_path=img_path + '_total',
                                 axes_labels=('Quantile coverage risk', 'Quantile estimation risk'))
 
@@ -204,7 +205,7 @@ def plot_pf_and_total(results, results_folder, cfg, cont_cfg):
     names = ['PF_' + str(i) for i in results['subset_metrics'].keys()] + ['ini_fx_' + str(i) for i in
                                                                           results['subset_metrics'].keys()]
 
-    plot_2D_pf(Fs, fx_inis, names, cfg['save_plots'], img_path)
+    plot_2D_pf(Fs, fx_inis, names, cfg['save_plots'], img_path, f_markersize=10, label_scale=1.8)
 
 
 def plot_2D_pf(Fs,
@@ -215,11 +216,13 @@ def plot_2D_pf(Fs,
                f_markersize=5,
                f_mode='markers+lines',
                colors_ixs=None,
-               axes_labels=('Quantile coverage risk', 'Quantile estimation risk')):
+               axes_labels=('Quantile coverage risk', 'Quantile estimation risk'),
+               **kwargs):
+
     data = Fs + fx_inis
     modes = [f_mode] * len(Fs) + ['markers'] * len(fx_inis)
     colors_ixs = list(range(len(Fs))) * 2 if colors_ixs is None else colors_ixs
-    markersizes = [f_markersize] * len(Fs) + [15] * len(fx_inis)
+    markersizes = [f_markersize] * len(Fs) + [10] * len(fx_inis)
     marker_symbols = ['circle'] * len(Fs) + ['hexagram'] * len(fx_inis)
     outlines = [False] * len(Fs) + [True] * len(fx_inis)
     show_legends = [True] * len(Fs) + [False] * len(fx_inis)
@@ -233,7 +236,8 @@ def plot_2D_pf(Fs,
                                 show_legends=show_legends,
                                 axes_labels=axes_labels,
                                 save=save,
-                                file_path=img_path + '_subsets', )
+                                file_path=img_path + '_subsets',
+                                **kwargs)
 
 
 def save_cont_resuls(results, results_folder, cfg, cont_cfg):

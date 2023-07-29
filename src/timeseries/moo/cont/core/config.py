@@ -36,7 +36,7 @@ cont_cfg = {
         'step_eps': 2.5e-2,
         'maxiter': 30,
         't_fun': {'type': 'angle',
-                  'eps': 110,
+                  'eps': 100,
                   'maxiter': 50},
     },
 }

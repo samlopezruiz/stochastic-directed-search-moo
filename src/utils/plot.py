@@ -316,10 +316,17 @@ def plot_2D_points_traces_total(points_traces,
                                 axes_labels=None,
                                 show_legends=None,
                                 label_scale=1,
-                                ):
+                                **kwargs):
     fig = make_subplots(rows=1, cols=2,
                         shared_xaxes=True,
                         subplot_titles=('Pareto Front', 'Total'))
+
+    if color_ixs is None:
+        color = [None] * len(points_traces)
+    elif isinstance(color_ixs[0], int):
+        color = [plotly_colors[i % len(plotly_colors)] for i in color_ixs]
+    else:
+        color = color_ixs
 
     for i, points in enumerate(points_traces):
         fig.add_trace(go.Scatter(x=points[:, 0],
@@ -327,8 +334,7 @@ def plot_2D_points_traces_total(points_traces,
                                  mode='markers' if modes is None else modes[i],
                                  marker_symbol=None if marker_symbols is None else marker_symbols[i],
                                  marker=dict(size=markersizes if isinstance(markersizes, int) else markersizes[i],
-                                             color=None if color_ixs is None else plotly_colors[
-                                                 color_ixs[i] % len(plotly_colors)],
+                                             color=color[i],
                                              line=None if outlines is None else dict(width=2,
                                                                                      color='black') if outlines[
                                                  i] else None,
@@ -341,8 +347,7 @@ def plot_2D_points_traces_total(points_traces,
                                  mode='markers' if modes is None else modes[i],
                                  marker_symbol=None if marker_symbols is None else marker_symbols[i],
                                  marker=dict(size=markersizes if isinstance(markersizes, int) else markersizes[i],
-                                             color=None if color_ixs is None else plotly_colors[
-                                                 color_ixs[i] % len(plotly_colors)],
+                                             color=color[i],
                                              line=None if outlines is None else dict(width=2,
                                                                                      color='black') if outlines[
                                                  i] else None,
@@ -356,8 +361,9 @@ def plot_2D_points_traces_total(points_traces,
             fig.update_yaxes(title_text=axes_labels[1] if col == 1 else 'Total', row=1, col=col)
     fig.update_layout(title=title,
                       template=template,
-                      legend=dict(font=dict(size=18 * label_scale)),
-                      font_color="black")
+                      legend=dict(font=dict(size=16 * label_scale)),
+                      font_color="black",
+                      **kwargs)
     fig.update_annotations(font_size=14 * label_scale)
     fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
     fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
@@ -934,10 +940,15 @@ def plot_boxes(plot_dict,
     fig.show()
 
 
-def set_fig_font_scale(fig, label_scale):
-    fig.update_xaxes(tickfont=dict(size=14 * label_scale), title_font=dict(size=18 * label_scale, color='black'))
-    fig.update_yaxes(tickfont=dict(size=14 * label_scale), title_font=dict(size=18 * label_scale))
-    fig.update_layout(legend=dict(font=dict(size=14 * label_scale)))
+def set_fig_font_scale(fig, label_scale, ycolor_black=False):
+    fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale, color='black'))
+
+    if ycolor_black:
+        fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale, color='black'))
+    else:
+        fig.update_yaxes(tickfont=dict(size=14 * label_scale), title_font=dict(size=18 * label_scale))
+
+    fig.update_layout(legend=dict(font=dict(size=14 * label_scale, color='black')))
     fig.update_annotations(font_size=14 * label_scale, font_color='black')
 
 
@@ -950,7 +961,11 @@ def box_plot_colors(plot_cfg,
                     y_title=None,
                     secondary_y=False,
                     color_label_pos='auto',
-                    label_scale=1.8):
+                    label_scale=1.8,
+                    quantile_thold=0.15,
+                    show_footnote=True,
+                    show_vlines=True):
+
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     metrics = plot_cfg['metrics']
@@ -997,7 +1012,7 @@ def box_plot_colors(plot_cfg,
             for m in metric:
                 if color_label_pos == 'auto':
                     m_range = np.max(m) - np.min(m) if secondary_y else global_range
-                    if (np.quantile(m, 0.75) - np.quantile(m, 0.25)) / m_range > 0.15:
+                    if (np.quantile(m, 0.75) - np.quantile(m, 0.25)) / m_range > quantile_thold:
                         y.append(np.median(m))
                     else:
                         y.append(np.max(m) + 0.025 * ((np.max(m) - np.min(m)) if secondary_y else global_range))
@@ -1006,44 +1021,55 @@ def box_plot_colors(plot_cfg,
                 elif color_label_pos == 'median':
                     y.append(np.median(m))
 
-
             pos_ix = np.where(color_text >= 0)[0]
             neg_ix = np.where(color_text < 0)[0]
-
 
             x = np.arange(len(labels)) + offsets[j]
 
             for ix, color, symbol in zip([pos_ix, neg_ix], ['black', 'red'], ['up', 'down']):
-
                 xi, yi = [x[i] for i in ix], [y[i] for i in ix]
                 fig.add_trace(go.Scatter(x=xi,
                                          y=yi,
                                          mode="text+markers",
                                          marker=dict(symbol=f'triangle-{symbol}', size=18, color=color),
-                                         text=['<b>{:.2f}</b>'.format(abs(t)) for t in color_text],
+                                         text=['<b>{:.2f}</b>'.format(abs(t)) for t in color_text[ix]],
                                          textposition='top center',
                                          showlegend=False,
-                                         textfont=dict(size=8 * label_scale, color='black'),
+                                         textfont=dict(size=10 * label_scale, color='black'),
                                          ),
                               secondary_y=j == 1 if secondary_y else False)
+
+    if show_vlines:
+        for i in range(len(metric)):
+            fig.add_vline(x=i+offsets[0]*2*1.05, line_width=1, line_color="lightgrey")
 
     fig.update_layout(boxmode='group', template=template, boxgap=0.05, boxgroupgap=0.1)
     fig.update_xaxes(ticktext=labels, tickvals=np.arange(len(labels)))
 
     if secondary_y:
         for i, key in enumerate(metrics.keys()):
-            fig.update_yaxes(dict(color='rgb' + str(cmaps[i](0.5)[0:3])), secondary_y=i == 1)
+            fig.update_yaxes(dict(color='rgb' + str(cmaps[i](0.1)[0:3])), secondary_y=i == 1)
             fig.update_yaxes(title=key.replace('_', ' '), secondary_y=i == 1)
     else:
         fig.update_yaxes(title=y_title, title_font=dict(size=18 * label_scale, color='black'))
-        fig.update_xaxes(tickfont=dict(color='black'))
         fig.update_yaxes(tickfont=dict(color='black'))
+    fig.update_xaxes(tickfont=dict(color='black'))
+
+    fig.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=.9,
+        font=dict(color='black')
+    ))
 
     fig.update_xaxes(title=x_title)
 
-    footnote = '<br>'.join(
-        [kruskal_significance(metric, label=key)['msg'] for key, metric in plot_cfg['metrics'].items()])
-    add_footnote(footnote, fig)
+    if show_footnote:
+        footnote = '<br>'.join(
+            [kruskal_significance(metric, label=key)['msg'] for key, metric in plot_cfg['metrics'].items()])
+        add_footnote(footnote, fig, y=-0.25)
     set_fig_font_scale(fig, label_scale)
 
     fig.show()

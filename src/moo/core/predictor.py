@@ -19,8 +19,8 @@ class Predictor:
         return self.limits is None or not np.any(fx >= self.limits)
 
     def within_max_increment(self, fx):
-        return self.max_increment is None or (np.sum(fx) - np.sum(self.min_fx)) / np.sum(
-            self.min_fx) < self.max_increment
+        # TODO: only works for objectives with same magnitude, change to individual increases np.all(fx <= self.min_fx * self.max_increment)
+        return self.max_increment is None or (np.sum(fx) - np.sum(self.min_fx)) / np.sum(self.min_fx) < self.max_increment
 
     # def update_min(self, fx):
     #     self.min_fx = fx if sum(fx) < sum(self.min_fx) else self.min_fx

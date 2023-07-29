@@ -4,9 +4,7 @@ import time
 import joblib
 import numpy as np
 from numpy.linalg import pinv
-from pymoo.algorithms.moo.nsga2 import NSGA2
-from pymoo.factory import get_sampling, get_crossover, get_mutation, get_termination, get_reference_directions
-from pymoo.optimize import minimize
+
 from tabulate import tabulate
 
 from src.models.attn.hyperparam_opt import HyperparamOptManager
@@ -147,3 +145,5 @@ if __name__ == '__main__':
                                 names=['cont'],
                                 markersizes=[5],
                                 modes=['markers+lines'])
+
+    #%%
