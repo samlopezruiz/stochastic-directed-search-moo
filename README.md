@@ -85,7 +85,7 @@ Predictions in the image are done with a 5 time step forecast horizon. The opaci
 mean prediction (`blue`) corresponds to the time step the prediction is made. Higher opacity means the prediction was
 made fewer steps in the past.
 
-<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/master/src/docs/TFTModel_ES_ema_r_q258_NSGA2_g100_p100_s0__tol5_all_pred_id31.png?raw=true" width="700" height="250"/>
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/master/docs/TFTModel_ES_ema_r_q258_NSGA2_g100_p100_s0__tol5_all_pred_id31.png?raw=true" width="700" height="250"/>
 
 ## Code execution
 This repository contains the source code for the Multi Objective Optimization of the quantiles forecasting for the 
@@ -180,7 +180,7 @@ Configure `split_dataset.yaml` to select the respective target data and the spli
 The dataset is divided in time subsets and then split into train, test and valid subsets. The dataset can 
 also be downsampled and trimmed if needed. The following image shows an example of the subsets shown with different colors:
 
-<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/master/src/docs/split_ES_minute_5T_dwn_smpl_2015-01_to_2021-06_g12week_r15.png?raw=true" width="400" height="200" />
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/master/docs/split_ES_minute_5T_dwn_smpl_2015-01_to_2021-06_g12week_r15.png?raw=true" width="400" height="200" />
 
 ```yaml
 data_cfg:
