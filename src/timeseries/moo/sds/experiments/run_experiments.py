@@ -17,10 +17,10 @@ if __name__ == '__main__':
                    }
 
     project = 'snp'
-    experiment = 'step_eps'
+    experiment = 'batch_size'
 
     set_in_dict(sds_cfg, ['model', 'ix'], input_args['model_ix'])
-    set_in_dict(sds_cfg, ['model', 'ix'], 1)
+    set_in_dict(sds_cfg, ['model', 'ix'], 0)
     set_in_dict(sds_cfg, ['sds', 'verbose'], False)
 
     print('Model ix: {}'.format(sds_cfg['model']['ix']))

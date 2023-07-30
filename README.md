@@ -61,6 +61,25 @@ Execute the following scripts to optimize the NN using SDS
 python3 src/timeseries/moo/run_sds_optimization.py
 ```
 
+The pareto Front obtained with the SDS optimization should look as follows: <br>
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/main/docs/train_test_pfs.png?raw=true" width="500" height="280"/>
+
+To compare the SDS algorithm with NSGA3, run
+```bash
+python3 src/timeseries/moo/run_sds_vs_moea_optimization.py
+```
+THe comparison between the two fronts should look as follows: <br>
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/main/docs/pfs_sds_nsga2b.png?raw=true" width="500" height="250"/>
+
+To explore the impact of the hyperparameters, run:
+```bash
+python3 src/timeseries/moo/sds/experiments/run_experiments.py
+python3 src/timeseries/moo/sds/experiments/explore_results.py
+```
+The experiments configuration are located in `src/timeseries/moo/sds/config.py`. <br>
+The general evaluation plot should look as follows: <br>
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/main/docs/eval_batch_size.png?raw=true" width="500" height="400"/>
+
 ## Training financial timeseries prediction model
 The forecasting model used in this work is presented
 in the following paper: https://arxiv.org/pdf/1912.09363.pdf <br>
@@ -85,7 +104,7 @@ Predictions in the image are done with a 5 time step forecast horizon. The opaci
 mean prediction (`blue`) corresponds to the time step the prediction is made. Higher opacity means the prediction was
 made fewer steps in the past.
 
-<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/master/docs/TFTModel_ES_ema_r_q258_NSGA2_g100_p100_s0__tol5_all_pred_id31.png?raw=true" width="700" height="250"/>
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/main/docs/TFTModel_ES_ema_r_q258_NSGA2_g100_p100_s0__tol5_all_pred_id31.png?raw=true" width="700" height="250"/>
 
 ## Code execution
 This repository contains the source code for the Multi Objective Optimization of the quantiles forecasting for the 
@@ -180,7 +199,7 @@ Configure `split_dataset.yaml` to select the respective target data and the spli
 The dataset is divided in time subsets and then split into train, test and valid subsets. The dataset can 
 also be downsampled and trimmed if needed. The following image shows an example of the subsets shown with different colors:
 
-<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/master/docs/split_ES_minute_5T_dwn_smpl_2015-01_to_2021-06_g12week_r15.png?raw=true" width="400" height="200" />
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/main/docs/split_ES_minute_5T_dwn_smpl_2015-01_to_2021-06_g12week_r15.png?raw=true" width="400" height="200" />
 
 ```yaml
 data_cfg:
