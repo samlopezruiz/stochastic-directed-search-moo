@@ -9,10 +9,10 @@ from pymoo.factory import get_termination, get_problem, get_sampling, get_crosso
     get_reference_directions
 from pymoo.optimize import minimize
 
-# from algorithms.moo.smsemoa import SMSEMOA
-# from algorithms.moo.utils.indicators import get_hypervolume, hv_hist_from_runs
-# from algorithms.moo.utils.plot import plot_runs, plot_boxplot
-# from algorithms.moo.utils.utils import get_moo_args, get_hv_hist_vs_n_evals
+# from algorithms.sds.smsemoa import SMSEMOA
+# from algorithms.sds.utils.indicators import get_hypervolume, hv_hist_from_runs
+# from algorithms.sds.utils.plot import plot_runs, plot_boxplot
+# from algorithms.sds.utils.utils import get_moo_args, get_hv_hist_vs_n_evals
 # from timeseries.data.market.files.utils import save_df
 # from timeseries.ideas.utils.files import save_vars
 #

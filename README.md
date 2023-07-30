@@ -1,12 +1,67 @@
-# Multiobjective Framework for Quantile Forecasting in Financial Time Series using Transformers
+# Multi-objective optimization of Neural Network with Stochastic Directed Search.
 
 
-Authors: Samuel López-Ruiz
+Authors: <>
 
 ### Abstract
-> The uncertainty associated with the prediction is vital for decision making in financial time series forecasting. An attention-based deep learning model based on transformers is implemented to generate the high-performance quantile multi-horizon forecasting. The neural network model uses specialized components to analyze important variable in each forecasting task and visualize persistent temporal relationships. We use knowledge transfer to leverage the training process and only the weights from the deep learning model's last layer are optimized using a multi-objective evolutionary algorithm. The Pareto fronts obtained in this work, show that evolutionary algorithms can find wide range of solutions that allow the decision maker to fine tune the quantile forecasts. NSGA-II and NSGA-III are used as optimization algorithms and the example dataset consists of S&P 500 Futures.
+> In engineering, management, and finance, it is common to have conflicting objectives that must be jointly optimized. Recently, a promissory approach for modeling these complex problems is through deep neural networks. However, due to their structure, they introduce high-dimensional problems which typically cannot be addressed with current methods. This work develops a gradient-based predictor-corrector method based on directed search to efficiently fine-tune a neural network without retraining the entire network. The multi-objective problem is formulated by dividing the neural network loss function into several objectives and selecting a subset of weights as the decision space. After the neural network is trained with stochastic gradient descent, the proposed method (i.e., \textit{stochastic directed search}) efficiently finds sections of the Pareto front that are of interest to the decision maker. The contributions include the use of Jacobian computation in batches to account for GPU memory limitations, special routines for better approximating boundaries, and an early stopping criterion that limits the search space. The effectiveness of the algorithm is demonstrated by fine-tuning a Temporal Fusion Transformer model, which generates multi-horizon quantile forecasts of the S\&P 500 Futures financial time series. Nevertheless, our algorithm is applicable to any neural network whose training task can be divided into opposing objectives. Additionally, this work evaluates the hyperparameters' effect on the algorithm performance to provide guidance for the users who want to implement it. Finally, the \textit{stochastic directed search} method is compared with NSGA-II and the results show that it performs competitively while offering several advantages, such as fewer function evaluations, higher hypervolume of Pareto fronts, and the ability to solve large problem instances with dimension up to 240,000.  
 
-## Model 
+## Stochastic Directed Search
+In this work, the loss function of the neural network is divided into multiple objectives and solved with the proposed stochastic directed search (SDS) method that incorporates the following contributions:
+
+- The computation of the Jacobian using batches of data. 
+- A stop criteria to obtain a subset of the Pareto front based on the increment of the sum of the objectives. 
+- A bisection method for the predictor to get closer to the boundaries in objective space. 
+- Show that large problems (dimension of 240,000) can be solved with the proposed implementation.
+
+These modifications are designed to improve the solutions of MOPs derived from the optimization of neural networks and the results show that the stochastic directed search method can efficiently solve high dimensional problems.     
+
+## Code organization
+The directory `sds` contains all the code needed to implement the Stochastic Directed Search algorithm. 
+The directory `timeseries` contains only an example of how to optimize a NN using SDS.
+The key project folders are organised as:
+
+    .
+    ├── src                     <- Source files
+    │   ├── sds                 <- All the code of the Stochastic Directed Search algorithm
+    │       ├── core            <- The algorithm implementation
+    │       ├── examples        <- Simple use examples of SDS
+    │       ├── nn              <- Code to generate a MOO problem from a NN model
+    │       ├── utils           <- SDS utils
+    │   ├── models              <- Implementation of models and algorithms
+    │   └── timeseries          <- Model training and optimization
+    │       ├── config          <- All configuration files needed
+    │       ├── data_formatter  <- Gets dataset-specific column definitions
+    │       ├── moo             <- Multi objective optimization scripts
+    │       ├── plot            <- Plot functions
+    │       ├── train_test      <- Model training and testing scripts
+    │       ├── utils           <- Util functions
+    │       └── volume          <- Volume profile visualizations
+    ├── requirements.txt
+    └── README.md
+
+## Run optimization
+The SDS algorithm configuration is defined in `src/timeseries/moo/sds/config.py`. <br>
+To run the optimization of a financial timeseries prediction model, follow these instructions. <br>
+
+### Step 0: Clone repo and install requirements
+   ```sh
+   git clone https://github.com/samlopezruiz/stochastic-directed-search-moo
+   cd stochastic-directed-search-moo
+   pip install requirements.txt
+   ```
+
+### Step 1: Download and prepare data
+To download the experiment data, run the following script:
+```bash
+python3 src/timeseries/moo/download_data.py
+```
+Execute the following scripts to optimize the NN using SDS
+```bash
+python3 src/timeseries/moo/run_sds_optimization.py
+```
+
+## Training financial timeseries prediction model
 The forecasting model used in this work is presented
 in the following paper: https://arxiv.org/pdf/1912.09363.pdf <br>
 The model consists on a novel attention-based architecture which combines high-performance multi-horizon 
@@ -30,9 +85,9 @@ Predictions in the image are done with a 5 time step forecast horizon. The opaci
 mean prediction (`blue`) corresponds to the time step the prediction is made. Higher opacity means the prediction was
 made fewer steps in the past.
 
-<img src="https://github.com/samlopezruiz/TimeseriesQuantileForecast/blob/master/src/docs/TFTModel_ES_ema_r_q258_NSGA2_g100_p100_s0__tol5_all_pred_id31.png?raw=true" width="700" height="250"/>
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/master/src/docs/TFTModel_ES_ema_r_q258_NSGA2_g100_p100_s0__tol5_all_pred_id31.png?raw=true" width="700" height="250"/>
 
-## Code Organisation
+## Code execution
 This repository contains the source code for the Multi Objective Optimization of the quantiles forecasting for the 
 Temporal Fusion Transformer model, along with the model code, training and evaluation routines.
 
@@ -45,23 +100,6 @@ The key configurations are defined as yaml files and are organised as:
 * **preprocess**: configuration of the preprocessing for the data
 * **model**: configuration of the model parameters (learning rate, batch size, etc)
 * **vars_definition**: configuration variable definitions used in training.
-
-
-The key project folders are organised as:
-
-    .
-    ├── src                     <- Source files
-    │   ├── models              <- Implementation of models and algorithms
-    │   └── timeseries          <- Model training and optimization
-    │       ├── config          <- All configuration files needed
-    │       ├── data_formatter  <- Gets dataset-specific column definitions
-    │       ├── moo             <- Multi objective optimization scripts
-    │       ├── plot            <- Plot functions
-    │       ├── train_test      <- Model training and testing scripts
-    │       ├── utils           <- Util functions
-    │       └── volume          <- Volume profile visualizations
-    ├── requirements.txt
-    └── README.md
 
 
 Additionally, inside the 'timeseries' folder, the following main scripts are listed according to 
@@ -77,14 +115,10 @@ their sequential execution and topic.
     * (**get_attention.py**): gets the attention variables from the trained model
     * (**plot_attention.py**): plots the attention obtained by the model
     * (**plot_forecasts.py**): plots the quantile forecasts
-* _Model multi objective optimization_: 
-    * (**moo_pareto_front.py**): gets the pareto front using the quantile coverage risk and quantile estimation risk as objectives
-    * (**moo_test_model.py**): uses a solution from the pareto front to generate the predictions
-
 
 The data, trained models, results, images and forecasts are saved in the 'output' folder. 
 
-## Running experiement
+## Train model
 The running project consists of S&P futures index dataset complimented with Nasdaq and other
 financial timeseries. <br>
 To implement another project, change the line``project='snp'`` in the main scripts and 
@@ -92,8 +126,8 @@ replicate the configuration yaml files.
 
 ### Step 0: Clone repo and install requirements
    ```sh
-   git clone https://github.com/samlopezruiz/TimeseriesQuantileForecast
-   cd TimeseriesQuantileForecast
+   git clone https://github.com/samlopezruiz/stochastic-directed-search-moo
+   cd stochastic-directed-search-moo
    pip install requirements.txt
    ```
    
@@ -128,17 +162,6 @@ python3 src/timeseries/get_attention.py
 python3 src/timeseries/plot_attention.py
 ```
 
-### Step 3: Multi objective optimization
-To get the pareto front, run:
-```bash
-python3 src/timeseries/moo_pareto_front.py
-```
-To test a solution from the pareto front, run:
-```bash
-python3 src/timeseries/moo_test_model.py
-```
-
-
 
 ## Customising scripts for new datasets
 ### Step 1: Datasets
@@ -154,10 +177,10 @@ day:
       url: https://mega.nz/file/PYtEQSKJ#iCAd42fywRakQeTzVx6LqLzFbn3q8nndX4wul_eqzUc
 ```
 Configure `split_dataset.yaml` to select the respective target data and the split configuration.
-The dataset is divided in time subsets and then splitted into train, test and valid subsets. The dataset can 
+The dataset is divided in time subsets and then split into train, test and valid subsets. The dataset can 
 also be downsampled and trimmed if needed. The following image shows an example of the subsets shown with different colors:
 
-<img src="https://github.com/samlopezruiz/TimeseriesQuantileForecast/blob/master/src/docs/split_ES_minute_5T_dwn_smpl_2015-01_to_2021-06_g12week_r15.png?raw=true" width="400" height="200" />
+<img src="https://github.com/samlopezruiz/stochastic-directed-search-moo/blob/master/src/docs/split_ES_minute_5T_dwn_smpl_2015-01_to_2021-06_g12week_r15.png?raw=true" width="400" height="200" />
 
 ```yaml
 data_cfg:
@@ -268,29 +291,4 @@ additionalDefinitions:
   - filename: append_ES_vars
 ```
 
-## Results
-The following two images show the variable selection for the running example (left) and the attention according the
-position index for the first transformer head (right).
-
-<p float="left">
-<img src="https://github.com/samlopezruiz/TimeseriesQuantileForecast/blob/master/src/docs/q159_hist_attn.png?raw=true" width="300" height="200" />
-<img  src="https://github.com/samlopezruiz/TimeseriesQuantileForecast/blob/master/src/docs/hist_attn_position_head.png?raw=true" width="400" height="200" />
-</p>
-
-
-The result from the multi objective optimization consists of the Pareto front with the _quantile coverage risk_ and _quantile estimation risk_ as
-the objectives. The left images shows the pareto front found for three configurations of quantiles and the
-right image shows the pareto front and a selected solution (in red) inside a tolerance window defined by a
-threshold increment in the total error and which can later be used to generate forecasts. 
-
-<p float="left">
-<img src="https://github.com/samlopezruiz/TimeseriesQuantileForecast/blob/master/src/docs/vary_quantiles_ES_ema_r_moo_results.png?raw=true" width="350" height="350" />
-<img src="https://github.com/samlopezruiz/TimeseriesQuantileForecast/blob/master/src/docs/TFTModel_ES_ema_r_q258_NSGA2_g100_p100_s0_lix33_uix31_tol5_pf.png?raw=true" width="350" height="350" />
-</p>
-
-
-The forecast of the solution marked in red is shown in the following image. It can be observed that the larger prediction
-intervals have increased with respect to the forecast shown previously and therefore the _quantile coverage risk_ is reduced.
-
-<img src="https://github.com/samlopezruiz/TimeseriesQuantileForecast/blob/master/src/docs/TFTModel_ES_ema_r_q258_NSGA2_g100_p100_s0_lix33_uix31_tol5_all_pred_id31.png?raw=true" width="700" height="250"/>
 

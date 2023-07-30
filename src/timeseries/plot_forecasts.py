@@ -16,7 +16,7 @@ if __name__ == "__main__":
     project = 'snp'
     forecast_cfg = {'experiment_name': '60t_ema_q159',
                     'forecast': 'TFTModel_ES_ema_r_q159_lr01_pred',
-                    'subfolders': []  # ['moo', 'selec_sols']
+                    'subfolders': []  # ['sds', 'selec_sols']
                     }
 
     additional_vars = ['ESc']

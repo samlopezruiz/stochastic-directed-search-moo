@@ -1,0 +1,7 @@
+# dataset subfolder
+60t_ema_q258_0:
+
+    # dataset file
+    - description:
+      file_name: TFTModel_ES_ema_r_q258_lr01_pred.z
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/results/60t_ema_q258_0/TFTModel_ES_ema_r_q258_lr01_pred.z

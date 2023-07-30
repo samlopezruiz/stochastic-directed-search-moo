@@ -1,0 +1,22 @@
+# dataset subfolder
+mkt:
+
+    # dataset file
+    - description:
+      file_name: subset_NQ_day_60T_dwn_smpl_2012_5_to_2021_6.z
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/data/mkt/subset_NQ_day_60T_dwn_smpl_2012_5_to_2021_6.z
+
+regime:
+
+    # dataset file
+    - description:
+      file_name: regime_ESc_r_T10Y2Y_VIX_2021_6_to_2021_6.z
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/data/regime/regime_ESc_r_T10Y2Y_VIX_2021_6_to_2021_6.z
+
+
+split:
+
+    # dataset file
+    - description:
+      file_name: split_ES_minute_60T_dwn_smpl_2015_1_to_2021_6_g8week_r15.z
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/data/split/split_ES_minute_60T_dwn_smpl_2015_1_to_2021_6_g8week_r15.z

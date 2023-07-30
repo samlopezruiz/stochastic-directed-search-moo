@@ -12,8 +12,8 @@ from botocore.config import Config
 from src.timeseries.utils.dataframe import renamer
 
 
-def download_datasets(dataset_cfg, project):
-    save_path = os.path.join('outputs', 'data', project, 'raw')
+def download_datasets(dataset_cfg, project, subfolder='raw', type_='data', base=''):
+    save_path = os.path.join(base, 'outputs', type_, project, subfolder)
     os.makedirs(save_path, exist_ok=True)
 
     for key, files in dataset_cfg.items():
