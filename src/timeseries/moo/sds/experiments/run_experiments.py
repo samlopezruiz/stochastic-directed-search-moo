@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 from tabulate import tabulate
 
 from src.timeseries.moo.sds.config import sds_cfg, params_cfg, experiments_cfg
@@ -12,20 +13,26 @@ from src.timeseries.utils.files import save_vars
 if __name__ == '__main__':
     # %%
     input_args = get_input_args()
-    general_cfg = {'save_plots': False,
-                   'save_results': False,
+    general_cfg = {'save_plots': True,
+                   'save_results': True,
                    }
 
     project = 'snp'
     experiment = 'batch_size'
+    model = 'standalone'
+
+    exp_cfg = experiments_cfg[experiment]
+
+    ##### (for demo purposes) uncomment this line #####
+    # exp_cfg['ini_cfg']['seeds'] = np.arange(0, 3)
+    ###############################################
 
     set_in_dict(sds_cfg, ['model', 'ix'], input_args['model_ix'])
-    set_in_dict(sds_cfg, ['model', 'ix'], 0)
+    set_in_dict(sds_cfg, ['model', 'ix'], model)
     set_in_dict(sds_cfg, ['sds', 'verbose'], False)
 
     print('Model ix: {}'.format(sds_cfg['model']['ix']))
 
-    exp_cfg = experiments_cfg[experiment]
     relevant_cfg = [params_cfg[k] for k in get_sublevel_keys(exp_cfg['loop_cfg'], [])]
     general_cfg['experiment_name'] = '_'.join([c['keys'][-1] for c in relevant_cfg])
     cfgs = get_cfg_from_loop_cfg(exp_cfg['loop_cfg'], params_cfg, sds_cfg, [])
@@ -35,6 +42,7 @@ if __name__ == '__main__':
     header = experiment_labels[0].keys()
     rows = [x.values() for x in experiment_labels]
     print(tabulate(rows, header, tablefmt='psql'))
+
 
     # %% Run experiments
     exp_results, results_folder = run_experiments(cfgs,

@@ -66,25 +66,22 @@ if __name__ == '__main__':
                    'save_latex': True,
                    }
 
+    # chose ix based on files_cfgs
     project = 'snp'
+    experiment_cfg_ix = 3 #refers to the 'moo_batch_size' experiment
 
-    files_cfgs = [{'folder': 'step_eps', 'experiment': '2_ix_4_it_9', 'prefix': 'step_eps:', 'x_title': 'step size'},
-                  {'folder': 'type_in_pf_eps_type_in_pf_eps_type_in_pf_eps', 'experiment': '2_ix_15_it_4',
+    files_cfgs = [{'folder': 'step_eps', 'experiment': 'standalone_ix_4_it_9', 'prefix': 'step_eps:', 'x_title': 'step size'},
+                  {'folder': 'type_in_pf_eps_type_in_pf_eps_type_in_pf_eps', 'experiment': 'standalone_ix_15_it_4',
                    'prefix': ['type:', ('in_pf_eps:', ': '), ', ', ('delta', 'd'), ('projection', 'p'), ('rank', 'r')],
                    'x_title': 'stop criteria', 'color_per_subset': True},
-                  {'folder': 'eps', 'experiment': '2_ix_9_it_1', 'prefix': 'eps:', 'x_title': 'beta'},
-                  {'folder': 'moo_batch_size', 'experiment': '0_ix_8_it', 'prefix': 'moo_batch_size:',
+                  {'folder': 'eps', 'experiment': 'standalone_ix_9_it_1', 'prefix': 'eps:', 'x_title': 'beta'},
+                  {'folder': 'moo_batch_size', 'experiment': 'standalone_ix_8_it', 'prefix': 'moo_batch_size:',
                    'x_title': 'batch size'},
-                  # {'folder': 'batch_ratio_stop_criteria', 'experiment': '2_ix_7_it_2', 'prefix': 'steps_eps:', 'x_title': 'beta'},
                   {'folder': 'model_ix', 'experiment': '10_it_6', 'prefix': [('ix:', 't:')], 'x_title': 'training'},
-                  {'folder': 'split_model', 'experiment': '2_ix_2_it_woX3', 'prefix': 'split_model:',
-                   'x_title': 'MOP problem'},
-                  ]
+                  {'folder': 'split_model', 'experiment': 'standalone_ix_2_it_woX3', 'prefix': 'split_model:',
+                   'x_title': 'MOP problem'}]
 
-    # chose ix based on files_cfgs
-    experiment_cfg_ix = 3
     file_cfg = files_cfgs[experiment_cfg_ix]
-
     base_path = os.path.join(get_result_folder({}, project), 'experiments', general_cfg['experiment_name'])
     results_folder = os.path.join(get_result_folder({}, project), 'experiments', file_cfg['folder'])
     cont_results = joblib.load(

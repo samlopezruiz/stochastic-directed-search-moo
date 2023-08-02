@@ -24,14 +24,14 @@ from src.utils.plot import plot_bidir_2D_points_vectors, plot_2D_points_traces_t
 import tensorflow as tf
 
 
-def get_model_and_params(cont_cfg, project, use_gpu=True):
-    cont_cfg['model']['experiment_name'] = cont_cfg['model']['basename'] + '_' + str(cont_cfg['model']['ix'])
-    results_folder = get_result_folder(cont_cfg['model'], project)
-    model_results = joblib.load(os.path.join(results_folder, cont_cfg['model']['results'] + '.z'))
+def get_model_and_params(sds_cfg, project, use_gpu=True):
+    sds_cfg['model']['experiment_name'] = sds_cfg['model']['basename'] + '_' + str(sds_cfg['model']['ix'])
+    results_folder = get_result_folder(sds_cfg['model'], project)
+    model_results = joblib.load(os.path.join(results_folder, sds_cfg['model']['results'] + '.z'))
     model_params = get_q_moo_params_for_problem2(project,
                                                  model_results,
-                                                 shuffle_data=cont_cfg['data']['shuffle'],
-                                                 random_state=cont_cfg['data']['random_state'],
+                                                 shuffle_data=sds_cfg['data']['shuffle'],
+                                                 random_state=sds_cfg['data']['random_state'],
                                                  use_gpu=use_gpu)
     return model_params, results_folder
 
@@ -314,9 +314,8 @@ def run_experiments(cfgs,
 
         if get_model and i > 0:
             print('resetting gpu memory...')
-            model_params['opt_manager'].hyperparam_folder = model_params['opt_manager'].hyperparam_folder[
-                                                            :-1] + str(
-                get_from_dict(cfg, ['model', 'ix']))
+            model_params['opt_manager'].hyperparam_folder = model_params['opt_manager'].hyperparam_folder[:-1] +\
+                                                            str(get_from_dict(cfg, ['model', 'ix']))
             model_params['model'].load(model_params['opt_manager'].hyperparam_folder, use_keras_loadings=True)
 
         if change_batch_size and i > 0:
