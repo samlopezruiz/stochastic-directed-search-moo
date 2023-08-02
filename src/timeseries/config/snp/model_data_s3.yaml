@@ -1,27 +1,27 @@
 # dataset subfolder
-60t_ema_q258_0:
+60t_ema_q258_standalone:
 
     # dataset file
     - description:
       file_name: TFTModel.ckpt.data-00000-of-00001
-      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_0/TFTModel.ckpt.data-00000-of-00001
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_standalone/TFTModel.ckpt.data-00000-of-00001
 
     - description:
       file_name: checkpoint
-      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_0/checkpoint
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_standalone/checkpoint
 
     - description:
       file_name: params.csv
-      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_0/params.csv
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_standalone/params.csv
 
     - description:
       file_name: results.csv
-      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_0/results.csv
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_standalone/results.csv
 
     - description:
       file_name: TFTModel.ckpt.data-00000-of-00001
-      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_0/TFTModel.ckpt.data-00000-of-00001
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_standalone/TFTModel.ckpt.data-00000-of-00001
 
     - description:
       file_name: TFTModel.ckpt.index
-      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_0/TFTModel.ckpt.index
+      url: https://ml-datasets-slr.s3.us-west-2.amazonaws.com/snp/save_models/60t_ema_q258_standalone/TFTModel.ckpt.index
