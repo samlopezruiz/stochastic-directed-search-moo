@@ -118,20 +118,26 @@ def confidence_ellipse(x, y, n_std=1.96, size=100):
     return path
 
 
-def plotly_save(fig, file_path, size, save_png=False, use_date_suffix=False):
-    print("Saving image:")
-    create_dir(file_path)
-    image_path = get_new_file_path(file_path, '.png', use_date_suffix)
-    html_path = get_new_file_path(file_path, '.html', use_date_suffix)
-    if size is None:
-        size = (1980, 1080)
+def plotly_save(fig, file_path, size, save_png=False, save_pdf=False, use_date_suffix=False):
 
-    if save_png:
-        print(image_path)
-        fig.write_image(image_path, width=size[0], height=size[1], engine='orca')
+    if file_path is not None:
+        create_dir(file_path)
+        image_path = get_new_file_path(file_path, '.png', use_date_suffix)
+        pdf_path = get_new_file_path(file_path, '.pdf', use_date_suffix)
+        html_path = get_new_file_path(file_path, '.html', use_date_suffix)
 
-    print(html_path)
-    fig.write_html(html_path)
+        if size is None:
+            size = (1980, 1080)
+
+        print('Saving image to {}...'.format(file_path), end='')
+        if save_png:
+            fig.write_image(image_path, width=size[0], height=size[1], engine='orca')
+
+        if save_pdf:
+            fig.write_image(pdf_path, engine='orca', width=size[0], height=size[1])
+
+        fig.write_html(html_path)
+        print('Done!')
 
 
 def plot_2D_predictor_corrector(points,
@@ -310,13 +316,16 @@ def plot_2D_points_traces_total(points_traces,
                                 outlines=None,
                                 save=False,
                                 save_png=False,
+                                save_pdf=False,
                                 file_path=None,
                                 title=None,
                                 size=(1980, 1080),
                                 axes_labels=None,
                                 show_legends=None,
                                 label_scale=1,
+                                return_fig=False,
                                 **kwargs):
+
     fig = make_subplots(rows=1, cols=2,
                         shared_xaxes=True,
                         subplot_titles=('Pareto Front', 'Total'))
@@ -367,10 +376,13 @@ def plot_2D_points_traces_total(points_traces,
     fig.update_annotations(font_size=14 * label_scale)
     fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
     fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
+
+    if return_fig:
+        return fig
     fig.show()
 
     if file_path is not None and save is True:
-        plotly_save(fig, file_path, size, save_png=save_png)
+        plotly_save(fig, file_path, size, save_png=save_png, save_pdf=save_pdf)
 
 
 def plot_2D_points_traces(points_traces,
@@ -472,6 +484,7 @@ def plot_bidir_2D_points_vectors(results,
                                  markersize=6,
                                  save=False,
                                  save_png=False,
+                                 save_pdf=False,
                                  file_path=None,
                                  size=(1980, 1080),
                                  plot_arrows=True,
@@ -535,18 +548,22 @@ def plot_bidir_2D_points_vectors(results,
         fig = make_subplots(rows=1, cols=1)
         [fig.add_traces(data=f.data) for f in xs_figs]
         fig.update_layout(template=template, legend=dict(font=dict(size=18 * label_scale)), font_color="black")
-        fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
-        fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
+        fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale),
+                         showgrid=True, gridwidth=1, gridcolor='#e1e1e1')
+        fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale),
+                         showgrid=True, gridwidth=1, gridcolor='#e1e1e1')
         fig.show()
 
         if file_path is not None and save is True:
-            plotly_save(fig, file_path + '_ds', size, save_png=save_png)
+            plotly_save(fig, file_path + '_ds', size, save_png=save_png, save_pdf=save_pdf)
 
     fig = make_subplots(rows=1, cols=1)
     [fig.add_traces(data=f.data) for f in fxs_figs]
     fig.update_layout(template=template, legend=dict(font=dict(size=18 * label_scale)), font_color="black")
-    fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
-    fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
+    fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale),
+                     showgrid=True, gridwidth=1, gridcolor='#e1e1e1')
+    fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale),
+                     showgrid=True, gridwidth=1, gridcolor='#e1e1e1')
 
     fig.update_yaxes(scaleanchor="x", scaleratio=1)
     if plot_title:
@@ -557,7 +574,7 @@ def plot_bidir_2D_points_vectors(results,
         fig.show()
 
     if file_path is not None and save is True:
-        plotly_save(fig, file_path + '_os', size, save_png=save_png)
+        plotly_save(fig, file_path + '_os', size, save_png=save_png, save_pdf=save_pdf)
 
 
 def plot_boxes_3d(boxes_edges,
@@ -964,7 +981,9 @@ def box_plot_colors(plot_cfg,
                     label_scale=1.8,
                     quantile_thold=0.15,
                     show_footnote=True,
-                    show_vlines=True):
+                    show_vlines=True,
+                    save=False,
+                    **kwargs):
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -1049,9 +1068,9 @@ def box_plot_colors(plot_cfg,
     if secondary_y:
         for i, key in enumerate(metrics.keys()):
             fig.update_yaxes(dict(color='rgb' + str(cmaps[i](0.1)[0:3])), secondary_y=i == 1)
-            fig.update_yaxes(title=key.replace('_', ' '), secondary_y=i == 1)
+            fig.update_yaxes(title=key.replace('_', ' ').capitalize(), secondary_y=i == 1)
     else:
-        fig.update_yaxes(title=y_title, title_font=dict(size=18 * label_scale, color='black'))
+        fig.update_yaxes(title=y_title.capitalize(), title_font=dict(size=18 * label_scale, color='black'))
         fig.update_yaxes(tickfont=dict(color='black'))
     fig.update_xaxes(tickfont=dict(color='black'))
 
@@ -1064,13 +1083,16 @@ def box_plot_colors(plot_cfg,
         font=dict(color='black')
     ))
 
-    fig.update_xaxes(title=x_title)
+    fig.update_xaxes(title=x_title.capitalize())
 
     if show_footnote:
         footnote = '<br>'.join(
             [kruskal_significance(metric, label=key)['msg'] for key, metric in plot_cfg['metrics'].items()])
         add_footnote(footnote, fig, y=-0.25)
     set_fig_font_scale(fig, label_scale)
+
+    if save is True:
+        plotly_save(fig, **kwargs)
 
     fig.show()
 
@@ -1093,8 +1115,6 @@ def plot_2d_grouped_traces(points_traces,
                            colors=None,
                            modes=None,
                            save=False,
-                           save_png=False,
-                           file_path=None,
                            title=None,
                            size=(1980, 1080),
                            axes_labels=None,
@@ -1102,6 +1122,7 @@ def plot_2d_grouped_traces(points_traces,
                            centroidsymbols=None,
                            label_scale=1,
                            legend_title=None,
+                           **kwargs
                            ):
     if colors is None:
         colors = DEFAULT_PLOTLY_COLORS[: len(points_traces[0])]
@@ -1138,20 +1159,23 @@ def plot_2d_grouped_traces(points_traces,
         fig.update_xaxes(title_text=axes_labels[0])
         fig.update_yaxes(title_text=axes_labels[1])
 
+
     fig.update_layout(title=title,
                       legend_title_text=legend_title,
                       template=template,
                       font=dict(size=16 * label_scale),
-                      legend=dict(font=dict(size=18 * label_scale), orientation="v"),
+                      legend=dict(font=dict(size=17 * label_scale), orientation="v"),
                       font_color="black")
 
     fig.update_annotations(font_size=14 * label_scale)
-    fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
-    fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale))
+    fig.update_xaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale),
+                     showgrid=True, gridwidth=1, gridcolor='#e1e1e1')
+    fig.update_yaxes(tickfont=dict(size=14 * label_scale, color='black'), title_font=dict(size=18 * label_scale),
+                     showgrid=True, gridwidth=1, gridcolor='#e1e1e1')
     fig.show()
 
-    if file_path is not None and save is True:
-        plotly_save(fig, file_path, size, save_png=save_png)
+    if save is True:
+        plotly_save(fig, size=size, **kwargs)
 
 
 def plot_radar(data,

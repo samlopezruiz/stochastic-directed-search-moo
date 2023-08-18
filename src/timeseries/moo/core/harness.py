@@ -175,8 +175,9 @@ def plot_pf_and_total(results, results_folder, cfg, cont_cfg):
                                  pareto_marker_mode='markers+lines',
                                  save=cfg['save_plots'],
                                  save_png=False,
+                                 save_pdf=True,
                                  file_path=img_path + '_pf',
-                                 size=(1980, 1080),
+                                 size=(1000, 900),
                                  plot_arrows=True,
                                  plot_points=True,
                                  plot_ps=False,
@@ -193,6 +194,8 @@ def plot_pf_and_total(results, results_folder, cfg, cont_cfg):
                                 marker_symbols=['circle', 'asterisk'],
                                 modes=['markers+lines', 'markers'],
                                 save=cfg['save_plots'],
+                                save_pdf=True,
+                                size=(1000, 900),
                                 outlines=[False, True],
                                 label_scale=1.8,
                                 file_path=img_path + '_total',
@@ -205,7 +208,9 @@ def plot_pf_and_total(results, results_folder, cfg, cont_cfg):
     names = ['PF_' + str(i) for i in results['subset_metrics'].keys()] + ['ini_fx_' + str(i) for i in
                                                                           results['subset_metrics'].keys()]
 
-    plot_2D_pf(Fs, fx_inis, names, cfg['save_plots'], img_path, f_markersize=10, label_scale=1.8)
+    plot_2D_pf(Fs, fx_inis, names, cfg['save_plots'], img_path,
+               f_markersize=7, label_scale=1.7, save_pdf=True,
+               size=(1000, 700),)
 
 
 def plot_2D_pf(Fs,
