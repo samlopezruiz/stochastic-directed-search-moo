@@ -1,3 +1,25 @@
+import gc
+import math
+import os
+import time
+from copy import deepcopy
+
+import tensorflow as tf
+from pymoo.algorithms.moo.nsga3 import NSGA3
+
+from src.timeseries.moo.core.harness import get_model_and_params, get_ts_problem, get_continuation_method, \
+    run_cont_problem, save_cont_resuls, save_latex_table, plot_pf_and_total, filename_from_cfg, plot_2D_pf
+from src.timeseries.moo.sds.utils.util import get_from_dict, set_in_dict
+from src.timeseries.utils.files import save_vars
+from src.timeseries.utils.moo import sort_1st_col
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.factory import get_sampling, get_crossover, get_mutation, get_termination, get_reference_directions
+from pymoo.optimize import minimize
+from src.timeseries.moo.sds.config import sds_cfg, params_cfg, experiments_cfg
+from src.timeseries.moo.core.harness import get_cfg_from_loop_cfg, \
+    get_sublevel_keys, run_experiments
+
+
 import itertools
 import os
 
@@ -19,76 +41,191 @@ from src.timeseries.utils.util import concat_mean_std_df, write_text_file, latex
 from src.utils.plot import plot_bidir_2D_points_vectors, \
     plot_pfs, bar_plots_with_errors, bar_plot_3axes_with_errors, plot_2D_points_traces, plot_boxes, \
     plot_2d_grouped_traces, marker_names, color_sequences, plot_radar, set_fig_font_scale, box_plot_colors
-import plotly.graph_objs as go
-import matplotlib as plt
 
 
-pio.renderers.default = "browser"
+def run_sds_vs_moea_optimization(project, cfg, run_moeas):
+    sds_cfg_ = deepcopy(sds_cfg)
+    sds_cfg_['model']['ix'] = 'standalone'
 
+    if sds_cfg_["problem"]["split_model"] == 'small':
+        # Limit PF only for small size problem, since MOEAs cannot
+        # find a limited PF for the medium size problem
+        set_in_dict(sds_cfg_, ['sds', 'max_increment'], 0.05)
 
-def pad_str_num_cols(df, round_dig=3, thold=1e-1, inplace=True):
-    if not inplace:
-        df = df.copy()
+    set_in_dict(sds_cfg_, ['sds', 'step_size'], 5e-3)
 
-    for col in df.columns:
-        if max(df[col]) < thold:
-            df[col] = df[col].apply(lambda x: "{:.2e}".format(x))
+    model_params, results_folder = get_model_and_params(sds_cfg_, project)
+    problem = get_ts_problem(sds_cfg_, model_params, test_ss=False)
+    ds_cont = get_continuation_method(sds_cfg_, problem)
+
+    # %% Optimize with SDS
+    results, metrics = run_cont_problem(ds_cont, problem)
+    # Save results
+    save_cont_resuls({'results': results, 'metrics': metrics, 'cont_cfg': sds_cfg_}, results_folder, cfg, sds_cfg_)
+    # Save latex tables
+    save_latex_table(metrics, results_folder, cfg, sds_cfg_)
+    # Plot results
+    plot_pf_and_total(results, results_folder, cfg, sds_cfg_)
+
+    if run_moeas:
+        # %% Optimize with MOEA
+        problem.n_constr = 2
+        if sds_cfg_["problem"]["split_model"] == 'small':
+            problem.constraints_limits = [0.459, .583]
+            pop_size, n_gen = 78, 400
         else:
-            if round_dig == 0:
-                digits = df[col].astype(float).round(round_dig).astype(int).astype(str)
-                df[col] = digits.str.rjust(digits.str.len().max(), fillchar=' ')
+            problem.constraints_limits = [1.0, 1.0]
+            pop_size, n_gen = 60, 150
+
+        t0 = time.time()
+        algorithm = NSGA2(
+            pop_size=pop_size,
+            n_offsprings=pop_size,
+            ref_dirs=get_reference_directions("energy", problem.n_obj, pop_size),
+            sampling=get_sampling("real_random"),
+            crossover=get_crossover("real_sbx", prob=0.9, eta=15),
+            mutation=get_mutation("real_pm", eta=20),
+            eliminate_duplicates=True
+        )
+
+        termination = get_termination("n_gen", n_gen)
+
+        nsga2_res = minimize(problem,
+                             algorithm,
+                             termination,
+                             seed=42,
+                             save_history=False,
+                             verbose=True)
+
+        # %% Execute NGSA-II
+        t0 = time.time()
+        algorithm = NSGA3(
+            pop_size=pop_size,
+            n_offsprings=pop_size,
+            ref_dirs=get_reference_directions("energy", problem.n_obj, pop_size),
+            sampling=get_sampling("real_random"),
+            crossover=get_crossover("real_sbx", prob=0.9, eta=15),
+            mutation=get_mutation("real_pm", eta=20),
+            eliminate_duplicates=True
+        )
+
+        termination = get_termination("n_gen", n_gen)
+
+        nsga3_res = minimize(problem,
+                             algorithm,
+                             termination,
+                             seed=42,
+                             save_history=False,
+                             verbose=True)
+
+        # %% Execute NSGA-III
+        X_nsga2_sorted, F_nsga2_sorted = sort_1st_col(nsga2_res.X, nsga2_res.F)
+        X_nsga3_sorted, F_nsga3_sorted = sort_1st_col(nsga3_res.X, nsga3_res.F)
+        X_sorted, F_sorted = sort_1st_col(results['population']['X'], results['population']['F'])
+        fx_ini = results['independent'][0]['descent']['ini_fx'].reshape(1, 2)
+        filename = filename_from_cfg(sds_cfg_)
+
+        plot_2D_pf(Fs=[F_sorted, F_nsga2_sorted, F_nsga3_sorted],
+                   fx_inis=[fx_ini, fx_ini, fx_ini],
+                   names=['SDS', 'NSGA-II', 'NSGA-III', 'ini', 'ini', 'ini'],
+                   f_markersize=6,
+                   colors_ixs=[0, 2, 1, 10, 10, 10],
+                   save=cfg['save_plots'],
+                   label_scale=1.7,
+                   size=(1000, 700),
+                   save_pdf=True,
+                   img_path=os.path.join(results_folder, 'sds', 'img', filename))
+
+        save_vars({'sds': {'F': F_sorted, 'X': X_sorted, 'results': results},
+                   'nsga2': {'F': F_nsga2_sorted, 'X': X_nsga2_sorted},
+                   'nsga3': {'F': F_nsga3_sorted, 'X': X_nsga3_sorted}},
+                  os.path.join(results_folder, 'comparison', filename))
+
+    tf.keras.backend.clear_session()
+    gc.collect()
+
+def run_sds_experiment(project, cfg, experiment, n_runs=None):
+    model = 'standalone'
+
+    exp_cfg = experiments_cfg[experiment]
+
+    if n_runs is not None:
+        exp_cfg['ini_cfg']['seeds'] = np.arange(0, n_runs)
+
+    set_in_dict(sds_cfg, ['model', 'ix'], model)
+    set_in_dict(sds_cfg, ['sds', 'verbose'], False)
+
+    print('Model ix: {}'.format(sds_cfg['model']['ix']))
+
+    relevant_cfg = [params_cfg[k] for k in get_sublevel_keys(exp_cfg['loop_cfg'], [])]
+    cfg['experiment_name'] = '_'.join([c['keys'][-1] for c in relevant_cfg])
+    cfgs = get_cfg_from_loop_cfg(exp_cfg['loop_cfg'], params_cfg, sds_cfg, [])
+    experiment_labels = [dict([(c['keys'][-1], get_from_dict(cfg, c['keys'])) for c in relevant_cfg]) for cfg in cfgs]
+
+    print('-----EXPERIMENTS-----')
+    header = experiment_labels[0].keys()
+    rows = [x.values() for x in experiment_labels]
+    print(tabulate(rows, header, tablefmt='psql'))
+
+    # %% Run experiments
+    exp_results, results_folder = run_experiments(cfgs,
+                                                  project,
+                                                  relevant_cfg,
+                                                  get_model=exp_cfg['ini_cfg']['get_model'],
+                                                  get_problem=exp_cfg['ini_cfg']['get_problem'],
+                                                  get_cont=exp_cfg['ini_cfg']['get_cont'],
+                                                  change_batch_size=exp_cfg['ini_cfg']['change_batch_size'],
+                                                  use_gpu=exp_cfg['ini_cfg'].get('use_gpu', True),
+                                                  seeds=exp_cfg['ini_cfg'].get('seeds', None))
+
+    # %% Save results
+    model_ix = get_from_dict(sds_cfg, ['model', 'ix'])
+    filename = '{}_ix_{}_it'.format(model_ix, len(cfgs))
+    save_vars({'params_cfg': params_cfg,
+               'exp_cfg': exp_cfg,
+               'exp_lbl': experiment_labels,
+               'exp_results': exp_results},
+              os.path.join(os.path.dirname(results_folder),
+                           'experiments',
+                           cfg['experiment_name'],
+                           filename),
+              )
+
+    tf.keras.backend.clear_session()
+    gc.collect()
+
+
+def explore_experiment_results(project, cfg, experiment, experiment_results_cfg, hv_min, hv_max):
+    cfg['experiment_name'] = experiment
+
+    def pad_str_num_cols(df, round_dig=3, thold=1e-1, inplace=True):
+        if not inplace:
+            df = df.copy()
+
+        for col in df.columns:
+            if max(df[col]) < thold:
+                df[col] = df[col].apply(lambda x: "{:.2e}".format(x))
             else:
-                digits = df[col].astype(float).round(round_dig).astype(str).str.split('.')
-                df_dig = pd.DataFrame(digits.to_list(), columns=['i', 'd'], index=digits.index)
-                df_dig['i'] = df_dig['i'].str.rjust(df_dig['i'].str.len().max(), fillchar=' ')
-                df_dig['d'] = df_dig['d'].str.ljust(df_dig['d'].str.len().max(), fillchar='0')
-                df[col] = df_dig['i'] + '.' + df_dig['d']
+                if round_dig == 0:
+                    digits = df[col].astype(float).round(round_dig).astype(int).astype(str)
+                    df[col] = digits.str.rjust(digits.str.len().max(), fillchar=' ')
+                else:
+                    digits = df[col].astype(float).round(round_dig).astype(str).str.split('.')
+                    df_dig = pd.DataFrame(digits.to_list(), columns=['i', 'd'], index=digits.index)
+                    df_dig['i'] = df_dig['i'].str.rjust(df_dig['i'].str.len().max(), fillchar=' ')
+                    df_dig['d'] = df_dig['d'].str.ljust(df_dig['d'].str.len().max(), fillchar='0')
+                    df[col] = df_dig['i'] + '.' + df_dig['d']
 
-    if not inplace:
-        return df
+        if not inplace:
+            return df
 
+    def save_df_to_latex(df, title, path):
+        write_text_file(path, latex_table(title, df.to_latex(escape=False, column_format='r' + 'r' * df.shape[1])))
 
-def save_df_to_latex(df, title, path):
-    write_text_file(path, latex_table(title, df.to_latex(escape=False, column_format='r' + 'r' * df.shape[1])))
-
-
-if __name__ == '__main__':
-
-    # %%
-
-    general_cfg = {'save_plot': False,
-                   'save_results': False,
-                   'show_title': False,
-                   'experiment_name': 'model_ix',
-                   'plot_individual_pf': False,
-                   'color_per_subset': True,
-                   'plot_only_important': False,
-                   'save_latex': True,
-                   }
-
-    # chose ix based on files_cfgs
-    project = 'snp'
-    experiment = 't_eps'
-
-    files_cfgs = [
-        {'key': 'step_eps', 'folder': 'step_eps', 'experiment': 'standalone_ix_4_it',
-         'prefix': 'step_eps:', 'x_title': 'step size', 'fig': 'steps'},
-        {'key': 'condition', 'folder': 'type_in_pf_eps_type_in_pf_eps_type_in_pf_eps',
-         'experiment': 'standalone_ix_15_it',
-         'prefix': ['type:', ('in_pf_eps:', ': '), ', ', ('delta', 'd'), ('projection', 'p'), ('rank', 'r')],
-         'x_title': 'stop criteria', 'color_per_subset': True, 'fig': 'criteria'},
-        {'key': 't_eps', 'folder': 'eps', 'experiment': 'standalone_ix_9_it', 'prefix': 'eps:',
-         'x_title': 'beta', 'fig': 'beta'},
-        {'key': 'batch_size', 'folder': 'moo_batch_size', 'experiment': 'standalone_ix_8_it',
-         'prefix': 'moo_batch_size:',
-         'x_title': 'batch size', 'fig': 'batch'},
-        {'key': 'model_size', 'folder': 'split_model', 'experiment': 'standalone_ix_2_it', 'prefix': 'split_model:',
-         'x_title': 'MOP problem', 'fig': 'problem'},
-    ]
-
-    file_cfg = [c for c in files_cfgs if c['key'] == experiment][0]
-    # base_path = os.path.join(get_result_folder({}, project), 'experiments', general_cfg['experiment_name'])
+    file_cfg = [c for c in experiment_results_cfg if c['key'] == experiment][0]
+    # base_path = os.path.join(get_result_folder({}, project), 'experiments', file_cfg['folder'])
     results_folder = os.path.join(get_result_folder({}, project), 'experiments', file_cfg['folder'])
+    img_folder = os.path.join(results_folder, 'img')
     cont_results = joblib.load(
         os.path.join(get_result_folder({}, project), 'experiments', file_cfg['folder'], file_cfg['experiment']) + '.z')
     lbls = [', '.join(['{}:{}'.format(k, v) for k, v in d.items()]) for d in cont_results['exp_lbl']]
@@ -103,6 +240,7 @@ if __name__ == '__main__':
     performance_title = file_cfg['x_title']
 
     print(lbls)
+
     # %% Use only one experiment file
     if isinstance(cont_results['exp_results'][0]['results'], list):
         subset_metrics_dfs = [[r['subset_metrics'] for r in res['metrics']] for res in cont_results['exp_results']]
@@ -145,17 +283,17 @@ if __name__ == '__main__':
 
     # %%
     plot_cfgs = [{'keys': ['pred_norm', 'corr_norm', ], 'color_position': 'auto',
-                  'secondary_y': True, 'color_ixs': [0, 1, 3]},
+                  'secondary_y': True, 'color_ixs': [0, 1, 3], 'name': 'norms'},
                  {'keys': ['train hv', 'valid hv'], 'color_position': 'auto',
-                  'secondary_y': False, 'boxmode': 'overlay', 'y_title': 'hypervolume'},
+                  'secondary_y': False, 'boxmode': 'overlay', 'y_title': 'hypervolume', 'name': 'hvs'},
                  {'keys': ['train dist', 'valid dist'], 'color_position': 'max',
-                  'secondary_y': False, 'y_title': 'distance'},
+                  'secondary_y': False, 'y_title': 'distance', 'name': 'dist'},
                  {'keys': ['corrector steps', 'descent steps'], 'color_position': 'auto',
-                  'secondary_y': False, 'y_title': 'no. steps'},
+                  'secondary_y': False, 'y_title': 'no. steps', 'name': 'n_steps'},
 
                  {'keys': ['predictor f evals', 'corrector f evals', 'descent f evals', 'predictor g evals',
                            'corrector g evals', 'descent g evals'],
-                  'secondary_y': False, 'type': 'bar'},
+                  'secondary_y': False, 'type': 'bar', 'name': 'other'},
                  ]
 
     wilcoxon_matrix = {}
@@ -172,70 +310,24 @@ if __name__ == '__main__':
             # text = ['{:.2f}'.format(abs(t)) for t in text]
             plot_cfg['color_text'][key] = text
 
-            # if general_cfg['save_latex']:
-            #     latex_df = plot_cfg['wilcoxon'][key].astype(int)
-            #     write_text_file(os.path.join(results_folder, f"wilcoxon_mat_{key.replace(' ', '_')}"),
-            #                     latex_table(f'Wilcoxon rank matches for {key}',
-            #                                 latex_df.to_latex(escape=False,
-            #                                                   column_format='r' + 'r' * latex_df.shape[1])))
-
-    # %%
     template = 'plotly_white'
-    if not general_cfg['plot_only_important']:
-        for plot_cfg in plot_cfgs:
-            if plot_cfg.get('type', 'box') == 'box':
-                box_plot_colors(plot_cfg,
-                                labels=lbls,
-                                x_title=x_title,
-                                color_label_pos=plot_cfg.get('color_position'),
-                                y_title=plot_cfg.get('y_title', None),
-                                secondary_y=plot_cfg.get('secondary_y', False),
-                                quantile_thold=0.15,
-                                show_footnote=False)
+    for plot_cfg in plot_cfgs:
+        if plot_cfg.get('type', 'box') == 'box':
+            box_plot_colors(plot_cfg,
+                            labels=lbls,
+                            x_title=x_title,
+                            color_label_pos=plot_cfg.get('color_position'),
+                            y_title=plot_cfg.get('y_title', None),
+                            secondary_y=plot_cfg.get('secondary_y', False),
+                            quantile_thold=0.15,
+                            show_footnote=False,
+                            save=cfg['save_plots'],
+                            label_scale=1.7,
+                            size=(1000, 1000),
+                            save_pdf=True,
+                            file_path=os.path.join(img_folder, f'{file_cfg["fig"]}_{plot_cfg["name"]}')
+                            )
 
-                # compiled_dict = dict([(k, {'mean': np.mean(np.array(flatten_exp_results[k]), axis=1), \
-                #                            'std': np.std(np.array(flatten_exp_results[k]), axis=1)}) \
-                #                       for k in plot_cfg['keys']])
-                # compiled_dict['lbls'] = lbls
-                # bar_plots_with_errors(compiled_dict,
-                #                       secondary_y=plot_cfg.get('secondary_y', False),
-                #                       title=plot_cfg.get('title', None))
-
-    # %%
-    # flatten_exp_results = subset_metrics_dfs
-
-    # if not general_cfg['plot_only_important']:
-    #     for plot_cfg in plot_cfgs:
-    #         if plot_cfg.get('type', 'box') == 'box':
-    #             plot_boxes(dict([(k, flatten_exp_results[k]) for k in plot_cfg['keys']]),
-    #                        lbls,
-    #                        color_ixs=plot_cfg.get('color_ixs', None),
-    #                        secondary_y=plot_cfg.get('secondary_y', False),
-    #                        plot_title=False,
-    #                        y_title=plot_cfg.get('y_title', False),
-    #                        x_title=x_title,
-    #                        label_scale=1.8,
-    #                        boxmode=plot_cfg.get('boxmode', 'group'),
-    #                        title=plot_cfg.get('title', None))
-    #
-    #             # wilcoxon_rank()
-    #         else:
-    #             compiled_dict = dict([(k, {'mean': np.mean(np.array(flatten_exp_results[k]), axis=1), \
-    #                                        'std': np.std(np.array(flatten_exp_results[k]), axis=1)}) \
-    #                                   for k in plot_cfg['keys']])
-    #             compiled_dict['lbls'] = lbls
-    #             bar_plots_with_errors(compiled_dict,
-    #                                   secondary_y=plot_cfg.get('secondary_y', False),
-    #                                   title=plot_cfg.get('title', None))
-
-    # %%
-    # import plotly.express as px
-    #
-    # fig = px.imshow(wilcoxon_rank_df)
-    # fig.show()
-    # print(wilcoxon_rank_df)
-
-    # %%
     if file_cfg.get('color_per_subset'):
         try:
             exp_lbls = [d['type'] for d in cont_results['exp_lbl']]
@@ -257,9 +349,7 @@ if __name__ == '__main__':
         colors = None
         marker_centroids = marker_names[:len(cont_results['exp_lbl'])]
 
-    print(colors, marker_centroids)
     # %%
-    # Hv
     titles = ['Hypervolume', 'Distance', 'Predictor and corrector norm', 'Function and gradient evals',
               'Corrector and descent steps']
     dfs = [subset_metrics_dfs, subset_metrics_dfs, pred_corr_metrics_dfs, pred_corr_metrics_dfs, pred_corr_metrics_dfs]
@@ -306,25 +396,18 @@ if __name__ == '__main__':
         compiled_dfs.append(latex_df)
         print(tabulate(latex_df, headers='keys', tablefmt='psql'))
 
-        # if general_cfg['save_latex']:
-        #     if title == 'Function and gradient evals':
-        #         latex_df.drop(['predictor g evals', 'descent f evals', 'descent g evals'], axis=1, inplace=True)
-        #     title = f'{title} varying {file_cfg["x_title"]}'
-        #     write_text_file(os.path.join(results_folder, f"{title.replace(' ', '_')}"),
-        #                     latex_table(title,
-        #                                 latex_df.to_latex(escape=False, column_format='r' + 'r' * latex_df.shape[1])))
-
-        # if not general_cfg['plot_only_important']:
-        #     bar_plots_with_errors(compiled_dict, title=title, secondary_y=sy)
-
-
-    # %%
-    # Exec Time
+        if cfg['save_latex']:
+            if title == 'Function and gradient evals':
+                latex_df.drop(['predictor g evals', 'descent f evals', 'descent g evals'], axis=1, inplace=True)
+            title = f'{title} varying {file_cfg["x_title"]}'
+            write_text_file(os.path.join(results_folder, f"{title.replace(' ', '_')}"),
+                            latex_table(title,
+                                        latex_df.to_latex(escape=False, column_format='r' + 'r' * latex_df.shape[1])))
 
     all_dfs = [times_dfs] + dfs
     all_get_values = [{'f(x)': {'mean': ['f(x)', 'mean (s)']},
-                      'J(x)': {'mean': ['J(x)', 'mean (s)']},
-                      'execution time': {'mean': ['execution', 'mean (s)']}}]
+                       'J(x)': {'mean': ['J(x)', 'mean (s)']},
+                       'execution time': {'mean': ['execution', 'mean (s)']}}]
     all_get_values += get_values
     compiled_dict, compiled_df = compile_metrics(lbls, all_dfs, all_get_values)
 
@@ -332,12 +415,10 @@ if __name__ == '__main__':
     tot_g = np.array(compiled_dict['predictor g evals']['mean']) + np.array(compiled_dict['corrector g evals']['mean'])
     factor = np.array(compiled_dict['J(x)']['mean']) / np.array(compiled_dict['f(x)']['mean'])
 
+    # something is off if we get inf values
     factor[np.isinf(factor)] = -1.0
 
     weighted_f_evals = tot_f + tot_g * factor
-
-
-    # compiled_dict['weighted f evals'] = {'mean': np.round(weighted_f_evals, 0).astype(int)}
     compiled_dict['weighted f evals'] = {'mean': weighted_f_evals}
 
     if isinstance(cont_results['exp_results'][0]['results'], list):
@@ -375,7 +456,8 @@ if __name__ == '__main__':
 
     eval_df.rename(columns={'f(x)': 'time Fx (ms)', 'J(x)': 'time Jx (ms)'}, inplace=True)
 
-    overview_df = pd.concat([eval_df, hvs_df, steps_df, norms_df, compiled_df.loc[:, ['factor', 'weighted f evals']].round(2)], axis=1)
+    overview_df = pd.concat(
+        [eval_df, hvs_df, steps_df, norms_df, compiled_df.loc[:, ['factor', 'weighted f evals']].round(2)], axis=1)
 
     print(overview_df.columns)
     f_evals_df = overview_df.loc[:,
@@ -383,80 +465,17 @@ if __name__ == '__main__':
                   'corrector g evals', 'weighted f evals']]
 
     f_evals2_df = overview_df.loc[:,
-                 ['descent steps', 'corrector steps', 'predictor norm', 'corrector norm', 'train hv', 'valid hv']]
+                  ['descent steps', 'corrector steps', 'predictor norm', 'corrector norm', 'train hv', 'valid hv']]
     time_evals_df = overview_df.loc[:,
-                    ['execution time',  'weighted f evals', 'valid hv']]
+                    ['execution time', 'weighted f evals', 'valid hv']]
     hvs_evals_df = overview_df.loc[:, ['train hv', 'valid hv']]
 
-
-    save_df_to_latex(f_evals_df, 'Time execution and evaluations count', os.path.join(results_folder, "f_evals_overview"))
+    save_df_to_latex(f_evals_df, 'Time execution and evaluations count',
+                     os.path.join(results_folder, "f_evals_overview"))
     save_df_to_latex(time_evals_df, 'General overview', os.path.join(results_folder, "time_evals_hvs_overview"))
     save_df_to_latex(hvs_evals_df, 'Hypervolume results', os.path.join(results_folder, "hvs_overview"))
-    save_df_to_latex(f_evals2_df, 'Steps count, norm and hypervolume results', os.path.join(results_folder, "f_evals2_overview"))
-
-    #%%
-    # import plotly.express as px
-    # import plotly.graph_objects as go
-    #
-    # compiled_df['batch_size'] = compiled_df.index.astype(int)
-    # fig = px.scatter(compiled_df, x='weighted f evals', y='execution time', size='batch_size')
-    # fig.show()
-
-    # fig = go.Figure()
-    #
-    # fig.add_scatter(x=x,
-    #                 y=y,
-    #                 mode='markers',
-    #                 name=names[i],
-    #                 marker=dict(color=colors[i * 5 + 2], size=15))
-    # fig.show()
-    #%%
-    # from sklearn.linear_model import LinearRegression
-    # cats = [list(range(5*i, 5*(i+1))) for i in range(3)]
-    #
-    # names = ['delta', 'rank', 'proj']
-    #
-    # fig = go.Figure()
-    #
-    # for i in range(len(cats)):
-    #     model = LinearRegression()
-    #     y = compiled_df['execution time'].iloc[cats[i]].values
-    #     x = compiled_df['weighted f evals'].iloc[cats[i]].values
-    #
-    #     model.fit(x.reshape(-1, 1), y.reshape(-1, 1))
-    #
-    #     x_range = np.linspace(np.floor(np.min(x)), np.ceil(np.max(x)), 100)
-    #     y_range = model.predict(x_range.reshape(-1, 1)).flatten()
-    #
-    #     fig.add_scatter(x=x,
-    #                     y=y,
-    #                     mode='markers',
-    #                     name=names[i],
-    #                     marker=dict(color=colors[i*5 + 2], size=15))
-    #     fig.add_scatter(x=x_range, y=y_range,
-    #                     showlegend=False,
-    #                     mode='lines',
-    #                     text=text,
-    #                     opacity=0.5,
-    #                     marker=dict(color=colors[i*5 + 2]))
-    #
-    #     fig.add_scatter(x=[x_range[int(len(y_range) * .8)]], y=[y_range[int(len(y_range) * .8)]],
-    #                     showlegend=False,
-    #                     mode='text',
-    #                     text=['c={:.2f}'.format(model.coef_[0][0])],
-    #                     textposition='top left' if i < 2 else 'bottom right',
-    #                     textfont=dict(size=14 * 1.8, color='black'),
-    #                     marker=dict(color=colors[i * 5 + 2]))
-    #
-    #
-    # fig.update_yaxes(title='CPU time (s)')
-    # fig.update_xaxes(title='Weighted function evaluations')
-    # set_fig_font_scale(fig, label_scale=1.8, ycolor_black=True)
-    # fig.update_layout(template='plotly_white')
-    # fig.show()
-
-    # %%
-    latex_df = compiled_df.loc[:, ['f(x)', 'weighted f evals', 'mean hv']]
+    save_df_to_latex(f_evals2_df, 'Steps count, norm and hypervolume results',
+                     os.path.join(results_folder, "f_evals2_overview"))
 
     print_df = compiled_df.loc[:, ['execution time', 'weighted f evals', 'mean hv']]
     print(tabulate(print_df, headers='keys', tablefmt='psql'))
@@ -467,33 +486,17 @@ if __name__ == '__main__':
 
     bar_plot_3axes_with_errors(plot_dict, title='Cpu time, weighted f evals, and hv')
 
-    # %% Performance
-    performance = (compiled_dict['mean hv']['mean'] / max(compiled_dict['mean hv']['mean'])) * 100 - (
-            compiled_dict['weighted f evals']['mean'] / max(compiled_dict['weighted f evals']['mean']))
-
-    performance = performance / max(performance)
-
-    plot_dict = {'lbls': lbls,
-                 'performance': {
-                     'mean': performance},
-                 }
-    # bar_plots_with_errors(plot_dict, title='Performance', secondary_y=False)
-
+    # %%
     data = np.array([compiled_dict['weighted f evals']['mean'] / 1000, compiled_dict['valid hv']['mean'],
                      compiled_dict['execution time']['mean']]).T
     performance = pd.DataFrame(data, columns=['weighted f evals', 'valid hv', 'execution time'], index=lbls)
-    # data = [d.reshape(1, -1) for d in data]
+    evals_max, et_max = 3.9, 1200
 
-    evals_max, hv_max, et_max = 3.9, 3.39, 1200
-
-    hv_min = 2.9
     performance_norm = pd.DataFrame()
     performance_norm['norm weighted f evals'] = (performance['weighted f evals'] / evals_max) * 100
     performance_norm['norm exec time'] = (performance['execution time'] / et_max) * 100
     performance_norm['norm HV'] = ((performance['valid hv'] - hv_min) / (hv_max - hv_min)) * 100
     print(tabulate(performance_norm, headers='keys', tablefmt='psql'))
-
-    data = [d.reshape(1, -1) for d in performance_norm.values]
 
     # %%
     keys = ['corrector g evals', 'predictor g evals', 'corrector f evals', 'predictor f evals']
@@ -529,13 +532,9 @@ if __name__ == '__main__':
     latex_df = concat_mean_std_df(performance_norm, cols)
     print(tabulate(latex_df, headers='keys', tablefmt='psql'))
 
-    if general_cfg['save_latex']:
+    if cfg['save_latex']:
         write_text_file(os.path.join(results_folder, 'main_table'),
                         latex_table('Results comparison', latex_df.to_latex(escape=False)))
-
-    # %%
-    # markersymbols = None
-    # centroidsymbols = marker_names[:len(colors_ixs)]
 
     plot_2d_grouped_traces([norm_f, norm_hv],
                            names=lbls,
@@ -544,31 +543,14 @@ if __name__ == '__main__':
                            markersymbols=None,
                            centroidsymbols=marker_centroids,
                            axes_labels=['Normalized weighted function evaluations', 'Normalized valid HV'],
-                           label_scale=1.8,
+                           file_path=os.path.join(img_folder, f'eval_{file_cfg["fig"]}'),
+                           save=cfg['save_plots'],
+                           save_pdf=True,
+                           size=(1000, 900),
                            # title=performance_title,
                            legend_title=performance_title,
                            )
 
-    # plot_2D_points_traces(data, names=lbls, color_ixs=colors_ixs,
-    #                       axes_labels=['normalized f evals', 'normalized hypervolume'])
-
-    # %%
-    # norm_f_arr = 100 - np.array(norm_f)
-    # norm_hv_arr = np.array(norm_hv)
-    # norm_et_arr = 100 - np.array(norm_et)
-    # radar_data = np.array([norm_f_arr, norm_hv_arr, norm_et_arr])
-    #
-    # categories = ['Normalized weighted function evals', 'Normalized mean hv', 'Normalized execution time']
-    # mean_radar_data = np.mean(radar_data, axis=-1)
-    #
-    # plot_radar(data=mean_radar_data,
-    #            categories=categories,
-    #            names=lbls,
-    #            colors=colors,
-    #            markersymbols=marker_centroids)
-
-
-    img_path = os.path.join(results_folder, 'img')
     if isinstance(cont_results['exp_results'][0]['results'], list):
         Fs = [sort_arr_1st_col(res['results'][0]['population']['F']) for res in cont_results['exp_results']]
         fx_inis = [res['results'][0]['independent'][0]['descent']['ini_fx'].reshape(1, -1) for res in
@@ -579,41 +561,68 @@ if __name__ == '__main__':
                    cont_results['exp_results']]
     names = lbls + [l + '_ini' for l in lbls]
 
-    ## Needed only for color subsets
-    # ix_mask = list(range(0, 5))
-    # Fs = [Fs[i] for i in ix_mask]
-    # fx_inis = [fx_inis[i] for i in ix_mask]
-    # colors = [colors[i] for i in ix_mask]
-    # names = [lbls[i] for i in ix_mask] + [l + '_ini' for l in [lbls[i] for i in ix_mask]]
+    if file_cfg.get('color_per_subset'):
+        ix_mask = list(range(0, 5))
+        Fs = [Fs[i] for i in ix_mask]
+        fx_inis = [fx_inis[i] for i in ix_mask]
+        colors = [colors[i] for i in ix_mask]
+        names = [lbls[i] for i in ix_mask] + [l + '_ini' for l in [lbls[i] for i in ix_mask]]
 
-    if not general_cfg['plot_only_important']:
-        plot_2D_pf(Fs, fx_inis, names, general_cfg['save_plot'], os.path.join(img_path, 'pfs'),
-                   f_markersize=5,
-                   f_mode='markers+lines',
-                   colors_ixs=colors * 2 if colors is not None else None,
-                   label_scale=1.8,
-                   legend_title=file_cfg['x_title'])
+    plot_2D_pf(Fs, fx_inis, names, cfg['save_plots'], os.path.join(img_folder, 'pfs'),
+               f_markersize=5,
+               f_mode='markers+lines',
+               colors_ixs=colors * 2 if colors is not None else None,
+               label_scale=1.8,
+               legend_title=file_cfg['x_title'])
 
 
-        plot_pfs(Fs, fx_inis, lbls)
+if __name__ == '__main__':
+    project = 'snp'
 
-    # %% Plot individual
-    if general_cfg['plot_individual_pf']:
-        if isinstance(cont_results['exp_results'][0]['results'], list):
-            plot_results = [[p['population'] for p in res['results'][0]['independent']] for res in
-                            cont_results['exp_results']]
-            plot_descent = [[p['descent'] for p in res['results'][0]['independent']] for res in
-                            cont_results['exp_results']]
-        else:
-            plot_results = [[p['population'] for p in res['results']['independent']] for res in
-                            cont_results['exp_results']]
-            plot_descent = [[p['descent'] for p in res['results']['independent']] for res in
-                            cont_results['exp_results']]
+    cfg = {'save_plots': False,
+           'save_results': False,
+           'save_latex': False,
+           'plot_title': False}
 
-        for res, descent in zip(plot_results, plot_descent):
-            plot_bidir_2D_points_vectors(res,
-                                         descent=descent,
-                                         markersize=6,
-                                         plot_ps=False,
-                                         )
+    ## Run single optimization with SDS and compare it with MOEAS
+    run_sds_vs_moea_optimization(project, cfg, run_moeas=False)
+
+    ## Code to run the experiments
+    for experiment in ['condition', 'model_size', 'step_eps', 't_eps', 'batch_size']:
+        run_sds_experiment(project, cfg, experiment, n_runs=2)
+
+    # Explore experiment results
+    experiment_results_cfg = [
+        {'key': 'step_eps', 'folder': 'step_eps', 'experiment': 'standalone_ix_4_it',
+         'prefix': 'step_eps:', 'x_title': 'step size', 'fig': 'steps'},
+        {'key': 'condition', 'folder': 'type_in_pf_eps_type_in_pf_eps_type_in_pf_eps',
+         'experiment': 'standalone_ix_15_it',
+         'prefix': ['type:', ('in_pf_eps:', ': '), ', ', ('delta', 'd'), ('projection', 'p'), ('rank', 'r')],
+         'x_title': 'stop criteria', 'color_per_subset': True, 'fig': 'criteria'},
+        {'key': 't_eps', 'folder': 'eps', 'experiment': 'standalone_ix_9_it', 'prefix': 'eps:',
+         'x_title': 'beta', 'fig': 'beta'},
+        {'key': 'batch_size', 'folder': 'moo_batch_size', 'experiment': 'standalone_ix_8_it',
+         'prefix': 'moo_batch_size:',
+         'x_title': 'batch size', 'fig': 'batch'},
+        {'key': 'model_size', 'folder': 'split_model', 'experiment': 'standalone_ix_2_it', 'prefix': 'split_model:',
+         'x_title': 'MOP problem', 'fig': 'problem'},
+    ]
+
+    # get hv min and max for normalized plots
+    hv_valid = []
+    for experiment in ['condition', 'model_size', 'step_eps', 't_eps', 'batch_size']:
+        file_cfg = [c for c in experiment_results_cfg if c['key'] == experiment][0]
+        cont_results = joblib.load(
+            os.path.join(get_result_folder({}, project), 'experiments',
+                         file_cfg['folder'], file_cfg['experiment']) + '.z')
+
+        for exp in cont_results['exp_results']:
+            for run in exp['metrics']:
+                hv_valid.append(run['subset_metrics'].loc['valid', 'hv'])
+
+    # get tables and plots from results
+    hv_max, hv_min = math.ceil(np.max(hv_valid) * 10) / 10, math.floor(np.min(hv_valid) * 10) / 10
+    for experiment in ['condition', 'model_size', 'step_eps', 't_eps', 'batch_size']:
+        explore_experiment_results(project, cfg, experiment, experiment_results_cfg, hv_min, hv_max)
+
 

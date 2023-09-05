@@ -9,6 +9,7 @@ from src.timeseries.moo.core.harness import get_model_and_params, get_ts_problem
 from src.timeseries.moo.sds.utils.bash import get_input_args
 from src.timeseries.moo.sds.utils.indicators import metrics_of_pf
 from src.timeseries.moo.sds.utils.util import get_from_dict, set_in_dict
+from src.timeseries.utils.files import save_vars
 from src.timeseries.utils.moo import sort_1st_col
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.factory import get_sampling, get_crossover, get_mutation, get_termination, get_reference_directions
@@ -28,9 +29,13 @@ if __name__ == '__main__':
 
     sds_cfg['model']['ix'] = input_args['model_ix']
     sds_cfg['model']['ix'] = 'standalone'
-    # set_in_dict(sds_cfg, ['sds', 'max_increment'], 0.05)
+
+    if sds_cfg["problem"]["split_model"] == 'small':
+        # Limit PF only for small size problem, since MOEAs cannot
+        # find a limited PF for the medium size problem
+        set_in_dict(sds_cfg, ['sds', 'max_increment'], 0.05)
+
     set_in_dict(sds_cfg, ['sds', 'step_size'], 5e-3)
-    print('Model ix: {}'.format(get_from_dict(sds_cfg, ['model', 'ix'])))
 
     model_params, results_folder = get_model_and_params(sds_cfg, project)
     problem = get_ts_problem(sds_cfg, model_params, test_ss=False)
@@ -46,10 +51,13 @@ if __name__ == '__main__':
     plot_pf_and_total(results, results_folder, cfg, sds_cfg)
 
     # %% Optimize with MOEA
-    problem.constraints_limits = [1.0, 1.0]
-    # problem.constraints_limits = [0.459, .583]
     problem.n_constr = 2
-    pop_size, n_gen = 78, 14
+    if sds_cfg["problem"]["split_model"] == 'small':
+        problem.constraints_limits = [0.459, .583]
+        pop_size, n_gen = 78, 20 #400
+    else:
+        problem.constraints_limits = [1.0, 1.0]
+        pop_size, n_gen = 60, 150
 
     t0 = time.time()
     algorithm = NSGA2(
@@ -65,17 +73,13 @@ if __name__ == '__main__':
     termination = get_termination("n_gen", n_gen)
 
     nsga2_res = minimize(problem,
-                   algorithm,
-                   termination,
-                   seed=42,
-                   save_history=False,
-                   verbose=True)
+                         algorithm,
+                         termination,
+                         seed=42,
+                         save_history=False,
+                         verbose=True)
 
-    # F = problem.eval_individuals(nsga2_res.X, 'valid')
-    # X_moea_sorted, F_moea_sorted = sort_1st_col(nsga2_res.X, F)
-    # moea_metrics = metrics_of_pf(F_moea_sorted, ref=[2., 2.])
-
-#%%
+    # %%
     t0 = time.time()
     algorithm = NSGA3(
         pop_size=pop_size,
@@ -90,15 +94,14 @@ if __name__ == '__main__':
     termination = get_termination("n_gen", n_gen)
 
     nsga3_res = minimize(problem,
-                   algorithm,
-                   termination,
-                   seed=42,
-                   save_history=False,
-                   verbose=True)
+                         algorithm,
+                         termination,
+                         seed=42,
+                         save_history=False,
+                         verbose=True)
 
-
-    #%%
-    X_moea_sorted, F_nsga2_sorted = sort_1st_col(nsga2_res.X, nsga2_res.F)
+    # %%
+    X_nsga2_sorted, F_nsga2_sorted = sort_1st_col(nsga2_res.X, nsga2_res.F)
     X_nsga3_sorted, F_nsga3_sorted = sort_1st_col(nsga3_res.X, nsga3_res.F)
     X_sorted, F_sorted = sort_1st_col(results['population']['X'], results['population']['F'])
     fx_ini = results['independent'][0]['descent']['ini_fx'].reshape(1, 2)
@@ -115,4 +118,8 @@ if __name__ == '__main__':
                save_pdf=True,
                img_path=os.path.join(results_folder, 'sds', 'img', filename))
 
-
+    #%%
+    save_vars({'sds': {'F': F_sorted, 'X': X_sorted, 'results': results},
+               'nsga2': {'F': F_nsga2_sorted, 'X': X_nsga2_sorted},
+               'nsga3': {'F': F_nsga3_sorted, 'X': X_nsga3_sorted}},
+              os.path.join(results_folder, 'comparison', filename))
