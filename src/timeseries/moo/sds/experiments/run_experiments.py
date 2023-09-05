@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     project = 'snp'
     experiment = 'batch_size'
-    model = 'standalone'
+    model = 2
 
     exp_cfg = experiments_cfg[experiment]
 
