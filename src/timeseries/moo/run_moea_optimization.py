@@ -2,7 +2,6 @@ import time
 
 from src.timeseries.moo.sds.config import sds_cfg
 from src.timeseries.moo.core.harness import get_model_and_params, get_ts_problem, get_continuation_method
-from src.timeseries.moo.sds.utils.bash import get_input_args
 from src.timeseries.moo.sds.utils.indicators import metrics_of_pf
 from src.timeseries.moo.sds.utils.util import get_from_dict
 from src.timeseries.utils.moo import sort_1st_col
@@ -12,11 +11,10 @@ from pymoo.optimize import minimize
 
 if __name__ == '__main__':
     # %%
-    input_args = get_input_args()
     project = 'snp'
 
-    sds_cfg['model']['ix'] = input_args['model_ix']
-    sds_cfg['model']['ix'] = 0
+    sds_cfg['model']['ix'] = 'standalone'
+    sds_cfg['problem']['split_model'] = 'small' # medium
     print('Model ix: {}'.format(get_from_dict(sds_cfg, ['model', 'ix'])))
 
     model_params, results_folder = get_model_and_params(sds_cfg, project)
