@@ -1,7 +1,7 @@
 # Multi-objective optimization of Neural Network with Stochastic Directed Search.
 
-Authors: Samuel López, Carlos Hernández, Katya Rodríguez
-
+Authors: Samuel López, Carlos Hernández, Katya Rodríguez <br>
+https://doi.org/10.1016/j.eswa.2023.121535
 ### Abstract
 >This work proposes a novel approach, the stochastic directed search, for optimizing deep neural networks framed as high-dimensional multi-objective problems which typically cannot be addressed with current methods. The proposed algorithm is based on the gradient-based predictor-corrector directed search method and it allows the efficient fine-tuning of a neural network (NN) without retraining the entire model. The contributions include the computation of the Jacobian using batches of data to account for GPU memory limitations, special routines for better approximating boundaries, and an early stopping criterion that limits the search space. Additionally, the proposed method scales well with the problem dimension given that it employs the Jacobian to steer the search in the objective space.  The effectiveness of the algorithm is exemplified by fine-tuning a forecasting NN model, responsible for producing multi-horizon quantile forecasts of the S&P 500 Futures financial time series. The stochastic directed search optimizes the neural network in only 1.5% of the training time, i.e. 29.56 s, and the Pareto front obtained shows that variations of around 30% can be obtained for the objective with a degradation of only 5% in the loss function. When solving large problem instances with dimensions up to 240,000, the results show that it outperforms NSGA-II and NSGA-III by reducing function evaluations by a factor of 100, while increasing by more than 5% the hypervolume of Pareto fronts. Notably, this work showcases how a large NN model can be fine-tuned using a multi-objective framework.
 ## Stochastic Directed Search
